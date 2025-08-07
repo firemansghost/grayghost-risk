@@ -1,0 +1,33 @@
+{
+  "as_of": "2025-08-07",
+  "risk": 0.38,
+  "band": "yellow",
+  "regime": "liquidity_on",
+  "drivers": {
+    "etf_flows": {
+      "score": 0.55,
+      "contribution": 0.08,
+      "raw": 125000000
+    },
+    "net_liquidity": {
+      "score": 0.62,
+      "contribution": 0.06,
+      "raw": -24000000000
+    },
+    "stablecoins": {
+      "score": 0.41,
+      "contribution": -0.03,
+      "raw": 350000000
+    },
+    "term_structure": {
+      "score": 0.47,
+      "contribution": 0.01,
+      "raw_basis_pct": 6.1
+    },
+    "onchain": {
+      "score": 0.29,
+      "contribution": -0.07,
+      "raw": "LTH_SOPR=0.97"
+    }
+  }
+}

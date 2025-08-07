@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GrayGhost Risk</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">GrayGhost Risk</div>
+    <div id="asOf" class="asof"></div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="score-card">
+        <div class="label">Today's Risk</div>
+        <div id="riskScore" class="score">—</div>
+        <div id="riskBand" class="band pill">—</div>
+      </div>
+      <div class="gauges" id="gauges"></div>
+    </section>
+
+    <section class="why">
+      <h2>Why the score moved</h2>
+      <div id="contribs" class="contribs"></div>
+    </section>
+
+    <section class="history">
+      <h2>Download Data</h2>
+      <a class="btn" href="../data/latest.json" target="_blank">latest.json</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>© 2025 GrayGhost</div>
+  </footer>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>
