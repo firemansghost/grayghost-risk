@@ -132,46 +132,72 @@ def forward_fill(daily_dates, pairs):
         filled.append(last)
     return filled
 
+def scale_series(series_id, pairs):
+    # pairs: list[(date, value)] using series' native units
+    if series_id in ("WALCL", "WTREGEN"):   # millions of USD
+        factor = 1_000_000.0
+    elif series_id == "RRPONTSYD":          # billions of USD
+        factor = 1_000_000_000.0
+    else:
+        factor = 1.0
+    return [(d, v * factor) for (d, v) in pairs]
+
 def compute_net_liquidity():
     """Return dict with level, deltas, and trailing for UI; or None if no key/data."""
-    # fetch
-    walcl = fetch_fred_series("WALCL", days=180)          # weekly
-    tga   = fetch_fred_series("WTREGEN", days=180)        # daily TGA balance
-    rrp   = fetch_fred_series("RRPONTSYD", days=180)      # daily ON RRP outstanding
-    if not walcl or not tga or not rrp:
+    walcl_raw = fetch_fred_series("WALCL", days=180)      # millions
+    tga_raw   = fetch_fred_series("WTREGEN", days=180)    # millions
+    rrp_raw   = fetch_fred_series("RRPONTSYD", days=180)  # billions
+    if not walcl_raw or not tga_raw or not rrp_raw:
         return None
+
+    # scale to USD
+    walcl = scale_series("WALCL", walcl_raw)
+    tga   = scale_series("WTREGEN", tga_raw)
+    rrp   = scale_series("RRPONTSYD", rrp_raw)
+
     # build daily date index
     start = max(min(walcl[0][0], tga[0][0], rrp[0][0]), datetime.date.today() - datetime.timedelta(days=120))
-    dates = [start + datetime.timedelta(days=i) for i in range((datetime.date.today()-start).days+1)]
+    dates = [start + datetime.timedelta(days=i) for i in range((datetime.date.today() - start).days + 1)]
+
+    def forward_fill(daily_dates, pairs):
+        mp = {d: v for d, v in pairs}
+        out, last = [], None
+        for d in daily_dates:
+            if d in mp: last = mp[d]
+            out.append(last)
+        return out
+
     f_w = forward_fill(dates, walcl)
     f_t = forward_fill(dates, tga)
     f_r = forward_fill(dates, rrp)
-    # compute net liquidity series
+
     net = []
-    for i, d in enumerate(dates):
+    for i in range(len(dates)):
         if f_w[i] is None or f_t[i] is None or f_r[i] is None:
             net.append(None)
         else:
             net.append(f_w[i] - f_t[i] - f_r[i])
-    # drop leading None
-    first_idx = next((i for i,x in enumerate(net) if x is not None), None)
-    if first_idx is None: return None
-    dates = dates[first_idx:]; net = net[first_idx:]
-    # latest
+
+    first = next((i for i, x in enumerate(net) if x is not None), None)
+    if first is None:
+        return None
+    dates = dates[first:]; net = net[first:]
+
     level = net[-1]
     delta1d = level - net[-2] if len(net) >= 2 else 0.0
     delta7d = level - net[-7] if len(net) >= 7 else delta1d
     sma7 = delta7d / 7.0
-    # trailing (last 7 daily deltas) for UI
+
     trailing = []
     for i in range(1, min(8, len(net))):
         d = dates[-i].strftime("%d %b %Y")
         v = net[-i] - net[-i-1]
-        trailing.append({"date": d, "usd": round(v,2)})
-    # normalize: rising liquidity lowers risk. Scale ~ $100B
-    base = sma7
-    score = clamp(sigmoid(-base / 100_000_000_000.0), 0.0, 1.0)
+        trailing.append({"date": d, "usd": round(v, 2)})
+
+    # rising liquidity lowers risk; ~$100B scale
+    score = clamp(sigmoid(-sma7 / 100_000_000_000.0), 0.0, 1.0)
     contrib = round((score - 0.5) * 0.2, 2)
+
     return {
         "score": round(score, 2),
         "contribution": contrib,
@@ -179,7 +205,7 @@ def compute_net_liquidity():
         "delta1d_usd": round(delta1d, 2),
         "sma7_delta_usd": round(sma7, 2),
         "trailing": trailing,
-        "source": "FRED WALCL − WTREGEN − RRPONTSYD"
+        "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD corrected)"
     }
 
 # ----- base risk (placeholder until full model) -----
