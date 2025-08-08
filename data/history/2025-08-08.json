@@ -1,9 +1,9 @@
 {
   "as_of": "2025-08-08",
-  "risk": 0.41,
+  "risk": 0.4,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 116377.18,
+  "btc_price_usd": 116344.15,
   "etf_flow_usd": 0.0,
   "etf_flow_sma7_usd": 0.0,
   "drivers": {
@@ -15,24 +15,24 @@
       "source": "Farside 'Bitcoin ETF Flow \u2013 All Data'"
     },
     "net_liquidity": {
-      "score": 0.77,
-      "contribution": 0.07,
-      "raw": 41031790918
+      "score": 0.49,
+      "contribution": -0.03,
+      "raw": 18460150052
     },
     "stablecoins": {
-      "score": 0.31,
-      "contribution": 0.05,
-      "raw": 2475787540
+      "score": 0.39,
+      "contribution": -0.08,
+      "raw": 634394695
     },
     "term_structure": {
-      "score": 0.22,
-      "contribution": 0.08,
-      "raw_basis_pct": 11.03
+      "score": 0.69,
+      "contribution": -0.02,
+      "raw_basis_pct": 2.08
     },
     "onchain": {
       "score": 0.48,
-      "contribution": 0.03,
-      "raw": "LTH_SOPR=1.03"
+      "contribution": 0.12,
+      "raw": "LTH_SOPR=0.98"
     }
   }
 }
