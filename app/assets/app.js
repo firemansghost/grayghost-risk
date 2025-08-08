@@ -1,15 +1,17 @@
+// app/assets/app.js
 async function main() {
   try {
+    // Pull the latest risk JSON from your GitHub repo
     const DATA_URL =
       'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/latest.json?ts=' + Date.now();
 
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
 
-    // <-- THIS is the line that defines `data`
+    // <-- defines `data`
     const data = await res.json();
 
-    // Top info
+    // ===== Top card =====
     const asOfEl = document.getElementById('asOf');
     if (asOfEl) asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
 
@@ -20,10 +22,17 @@ async function main() {
     if (bandEl) {
       const band = String(data.band ?? 'yellow');
       bandEl.textContent = band.toUpperCase();
-      bandEl.classList.add(band);
+      bandEl.classList.add(band); // adds .green/.yellow/.red for styling
     }
 
-    // Gauges
+    // BTC price (new)
+    const priceEl = document.getElementById('btcPrice');
+    if (priceEl) {
+      const p = data.btc_price_usd;
+      priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
+    }
+
+    // ===== Driver gauges =====
     const gauges = document.getElementById('gauges');
     const map = {
       etf_flows: 'ETF Net Flows',
@@ -47,7 +56,7 @@ async function main() {
       }
     }
 
-    // Contributions
+    // ===== "Why it moved" bars =====
     const contribs = document.getElementById('contribs');
     if (contribs && data.drivers) {
       for (const k of Object.keys(map)) {
@@ -55,6 +64,7 @@ async function main() {
         if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
+        // Visual width scaled up a bit so tiny contributions still show
         const width = Math.min(100, Math.abs(g.contribution * 1000)); // demo scale
         const color = g.contribution >= 0 ? 'var(--orange)' : 'var(--green)';
         div.innerHTML = `
