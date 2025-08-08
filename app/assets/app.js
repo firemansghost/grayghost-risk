@@ -7,6 +7,8 @@ async function main() {
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
     const data = await res.json();
+
+    // window label for avgs (uses backend smooth_days if present)
     const WINDOW_DAYS = data.smooth_days ?? 7;
     const avgLabel = `Avg (${WINDOW_DAYS}d)`;
 
@@ -61,8 +63,7 @@ async function main() {
     const fmtPctOrBp = (v) => {
       const n = Number(v);
       if (!isFinite(n)) return '—';
-      // basis points if magnitude < 0.10%
-      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(2)} bp`;
+      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(2)} bp`; // <0.10% → bp
       return `${n.toFixed(2)}%`;
     };
 
@@ -70,7 +71,6 @@ async function main() {
     const clsFunding = (ann) => {
       const n = Number(ann);
       if (!isFinite(n)) return 'neu';
-      // neutral around ~10% annualized
       if (n >= 12) return 'hot';
       if (n <= 8)  return 'cool';
       return 'neu';
@@ -78,11 +78,48 @@ async function main() {
     const clsPremium = (pct) => {
       const n = Number(pct);
       if (!isFinite(n)) return 'neu';
-      // premium > +0.15% = hot, < −0.10% = cool
       if (n >= 0.15) return 'hot';
       if (n <= -0.10) return 'cool';
       return 'neu';
     };
+
+    // ===== sparkline helpers =====
+    const isNum = (v) => Number.isFinite(Number(v));
+    function makeSparkline(trailing) {
+      const vals = (trailing || [])
+        .map(d => d && isNum(d.usd) ? Number(d.usd) : null)
+        .filter(v => v !== null)
+        .reverse(); // draw oldest → newest
+
+      if (vals.length < 2) return '';
+
+      const w = 100, h = 28, pad = 1;
+      let min = Math.min(...vals), max = Math.max(...vals);
+      if (min === max) { min -= 1; max += 1; }
+      const scaleX = (i) => pad + (i * (w - 2*pad) / (vals.length - 1));
+      const scaleY = (v) => {
+        const t = (v - min) / (max - min);     // 0..1
+        return (h - pad) - t * (h - 2*pad);    // invert
+      };
+
+      let d = `M ${scaleX(0)} ${scaleY(vals[0])}`;
+      for (let i = 1; i < vals.length; i++) d += ` L ${scaleX(i)} ${scaleY(vals[i])}`;
+
+      const cls = vals[vals.length - 1] >= vals[0] ? 'up' : 'down';
+
+      // faint baseline from min→max for context
+      const y0 = scaleY(min), y1 = scaleY(max);
+      const bg = `<path class="spark-bg" d="M ${pad} ${y0} L ${w-pad} ${y0} M ${pad} ${y1} L ${w-pad} ${y1}" />`;
+
+      return `
+        <div class="sparkline">
+          <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+            ${bg}
+            <path class="spark ${cls}" d="${d}" />
+          </svg>
+        </div>
+      `;
+    }
 
     // ===== Driver gauges =====
     const gauges = document.getElementById('gauges');
@@ -106,7 +143,7 @@ async function main() {
           const r = fmtSignedUSD(raw), s = fmtSignedUSD(sma);
           extra = `
             <div class="title">Today: <span class="${r.cls}">${r.text}</span></div>
-            <div class="title">7d Avg: <span class="${s.cls}">${s.text}</span></div>
+            <div class="title">${avgLabel}: <span class="${s.cls}">${s.text}</span></div>
           `;
         } else if (k === 'stablecoins') {
           const raw = (typeof data.stablecoin_delta_usd === 'number') ? data.stablecoin_delta_usd : g.raw_delta_usd;
@@ -114,7 +151,7 @@ async function main() {
           const r = fmtSignedUSD(raw), s = fmtSignedUSD(sma);
           extra = `
             <div class="title">Today: <span class="${r.cls}">${r.text}</span></div>
-            <div class="title">7d Avg: <span class="${s.cls}">${s.text}</span></div>
+            <div class="title">${avgLabel}: <span class="${s.cls}">${s.text}</span></div>
           `;
         } else if (k === 'net_liquidity') {
           const lvl = g.level_usd;
@@ -124,7 +161,7 @@ async function main() {
           extra = `
             <div class="title">Level: ${fmtLevelUSD(lvl)}</div>
             <div class="title">Today: <span class="${d1f.cls}">${d1f.text}</span></div>
-            <div class="title">7d Avg: <span class="${s.cls}">${s.text}</span></div>
+            <div class="title">${avgLabel}: <span class="${s.cls}">${s.text}</span></div>
           `;
         } else if (k === 'term_structure') {
           const fAnn = g.funding_ann_pct;
@@ -137,6 +174,8 @@ async function main() {
           `;
         }
 
+        const spark = makeSparkline(g.trailing);
+
         const div = document.createElement('div');
         div.className = 'gauge';
         div.innerHTML = `
@@ -144,6 +183,7 @@ async function main() {
           <div class="value">${(g.score * 100).toFixed(0)}<span style="font-size:12px;"> /100</span></div>
           <div class="title">Contribution: ${(g.contribution >= 0 ? '+' : '') + (g.contribution * 100).toFixed(0)} bp</div>
           ${extra}
+          ${spark}
         `;
         gauges.appendChild(div);
       }
