@@ -11,13 +11,15 @@ latest_path = DATA / "latest.json"
 # ----- utils -----
 def clamp(x, lo=0.0, hi=1.0): return max(lo, min(hi, x))
 
-def http_get(url, timeout=20):
-    req = urllib.request.Request(url, headers={"User-Agent": "gh-actions/1.0"})
+def http_get(url, timeout=20, headers=None):
+    if headers is None:
+        headers = {"User-Agent": "gh-actions/1.0"}
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", errors="replace")
 
-def http_json(url, timeout=20):
-    return json.loads(http_get(url, timeout=timeout))
+def http_json(url, timeout=20, headers=None):
+    return json.loads(http_get(url, timeout=timeout, headers=headers))
 
 def sigmoid(x):
     try: return 1.0 / (1.0 + math.exp(-x))
@@ -181,34 +183,77 @@ def compute_net_liquidity():
         "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD)"
     }
 
-# ----- Term Structure & Leverage (Binance) -----
+# ----- Term Structure & Leverage (multi-exchange) -----
 def fetch_binance_funding_7d_annual_pct():
-    """Return (funding_per_8h_pct, funding_annualized_pct). Robust with fallbacks."""
-    # Primary: full history (last ~7 days = 21 entries)
     try:
         j = http_json("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000", timeout=20)
         rates = [float(x.get("fundingRate", 0.0)) for x in j][-21:] if isinstance(j, list) else []
-        # Filter obvious garbage
         rates = [r for r in rates if abs(r) > 1e-10]
         if rates:
-            avg_8h = sum(rates) / len(rates)               # decimal per 8h
-            return avg_8h * 100.0, avg_8h * 3 * 365 * 100.0
+            avg_8h = sum(rates)/len(rates)
+            return avg_8h*100.0, avg_8h*3*365*100.0
     except Exception as e:
-        print(f"[run_daily] WARN funding history failed: {e}", file=sys.stderr)
-
-    # Fallback: use current lastFundingRate from premiumIndex
+        print(f"[run_daily] WARN funding binance hist failed: {e}", file=sys.stderr)
     try:
         now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
         last = float(now.get("lastFundingRate", 0.0))
         if abs(last) > 1e-10:
-            return last * 100.0, last * 3 * 365 * 100.0
+            return last*100.0, last*3*365*100.0
     except Exception as e:
-        print(f"[run_daily] WARN funding fallback failed: {e}", file=sys.stderr)
-
+        print(f"[run_daily] WARN funding binance fallback failed: {e}", file=sys.stderr)
     return None, None
 
+def fetch_okx_funding_7d_annual_pct():
+    try:
+        hdr = {"User-Agent":"gh-actions/1.0"}
+        j = http_json("https://www.okx.com/api/v5/public/funding-rate-history?instId=BTC-USDT-SWAP&limit=100", headers=hdr, timeout=20)
+        arr = j.get("data", []) if isinstance(j, dict) else []
+        rates = [float(x.get("fundingRate", 0.0)) for x in arr][-21:]
+        rates = [r for r in rates if abs(r) > 1e-10]
+        if rates:
+            avg_8h = sum(rates)/len(rates)
+            return avg_8h*100.0, avg_8h*3*365*100.0
+    except Exception as e:
+        print(f"[run_daily] WARN funding okx hist failed: {e}", file=sys.stderr)
+    try:
+        hdr = {"User-Agent":"gh-actions/1.0"}
+        j = http_json("https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP", headers=hdr, timeout=20)
+        arr = j.get("data", []) if isinstance(j, dict) else []
+        if arr:
+            last = float(arr[0].get("fundingRate", 0.0))
+            if abs(last) > 1e-10:
+                return last*100.0, last*3*365*100.0
+    except Exception as e:
+        print(f"[run_daily] WARN funding okx fallback failed: {e}", file=sys.stderr)
+    return None, None
+
+def fetch_bitmex_funding_7d_annual_pct():
+    try:
+        j = http_json("https://www.bitmex.com/api/v1/funding?symbol=XBTUSD&count=100&reverse=true", timeout=20)
+        rates = [float(x.get("fundingRate", 0.0)) for x in j][:21] if isinstance(j, list) else []
+        rates = [r for r in rates if abs(r) > 1e-10]
+        if rates:
+            avg_8h = sum(rates)/len(rates)
+            return avg_8h*100.0, avg_8h*3*365*100.0
+    except Exception as e:
+        print(f"[run_daily] WARN funding bitmex failed: {e}", file=sys.stderr)
+    return None, None
+
+def fetch_okx_premium_now_pct():
+    try:
+        hdr = {"User-Agent":"gh-actions/1.0"}
+        j = http_json("https://www.okx.com/api/v5/public/mark-price?instId=BTC-USDT-SWAP", headers=hdr, timeout=20)
+        arr = j.get("data", []) if isinstance(j, dict) else []
+        if arr:
+            mark = float(arr[0].get("markPx"))
+            index = float(arr[0].get("indexPx"))
+            if index:
+                return (mark - index) / index * 100.0
+    except Exception as e:
+        print(f"[run_daily] WARN okx premium now failed: {e}", file=sys.stderr)
+    return None
+
 def fetch_binance_premium_now_and_7d_pct():
-    """Return (current_premium_pct, 7d_avg_premium_pct)."""
     now_pct = None
     try:
         now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
@@ -217,44 +262,51 @@ def fetch_binance_premium_now_and_7d_pct():
         if index:
             now_pct = (mark - index) / index * 100.0
     except Exception as e:
-        print(f"[run_daily] WARN premium now fetch failed: {e}", file=sys.stderr)
+        print(f"[run_daily] WARN premium now binance failed: {e}", file=sys.stderr)
 
     avg_pct = None
     try:
         arr = http_json("https://fapi.binance.com/fapi/v1/premiumIndexKlines?symbol=BTCUSDT&interval=1h&limit=168", timeout=20)
-        # each item: [openTime, open, high, low, close, ...] where values are the *ratio* (decimal)
         closes = [float(x[4]) for x in arr] if isinstance(arr, list) else []
         closes = [c for c in closes if abs(c) > 1e-12]
         if closes:
             avg_pct = (sum(closes) / len(closes)) * 100.0
         elif now_pct is not None:
-            # fallback: use current as a proxy for 7d avg if klines empty
             avg_pct = now_pct
     except Exception as e:
-        print(f"[run_daily] WARN premium klines failed: {e}", file=sys.stderr)
-        if now_pct is not None:
+        print(f"[run_daily] WARN premium klines binance failed: {e}", file=sys.stderr)
+        if avg_pct is None and now_pct is not None:
             avg_pct = now_pct
+
+    # if Binance entirely failed, try OKX current premium as a weak fallback
+    if now_pct is None:
+        now_pct = fetch_okx_premium_now_pct()
 
     return now_pct, avg_pct
 
-
 def compute_term_structure_driver():
-    fund_8h_pct, fund_ann_pct = fetch_binance_funding_7d_annual_pct()
-    prem_now_pct, prem_7d_pct = fetch_binance_premium_now_and_7d_pct()
+    # funding: try Binance → OKX → BitMEX
+    f8, fann = fetch_binance_funding_7d_annual_pct()
+    if fann is None:
+        f8, fann = fetch_okx_funding_7d_annual_pct()
+    if fann is None:
+        f8, fann = fetch_bitmex_funding_7d_annual_pct()
 
-    # scoring: higher funding/premium => higher risk
+    # premium: Binance (with OKX-now fallback inside)
+    prem_now, prem_7d = fetch_binance_premium_now_and_7d_pct()
+
     parts = []
-    if fund_ann_pct is not None:
-        parts.append(sigmoid((fund_ann_pct - 10.0) / 10.0))    # 10% ann ≈ neutral
-    if prem_7d_pct is not None:
-        parts.append(sigmoid((prem_7d_pct - 0.00) / 0.20))     # 0.2% premium → riskier
+    if fann is not None:
+        parts.append(sigmoid((fann - 10.0) / 10.0))     # 10% ann ~ neutral
+    if prem_7d is not None:
+        parts.append(sigmoid((prem_7d - 0.00) / 0.20))  # 0.2% prem ~ riskier
     if not parts:
         return {
             "score": round(random.uniform(0.3,0.7),2),
             "contribution": round(random.uniform(-0.08,0.12),2),
             "funding_ann_pct": None, "funding_8h_pct": None,
             "perp_premium_now_pct": None, "perp_premium_7d_pct": None,
-            "source": "Binance futures (public)"
+            "source": "Binance/OKX/BitMEX (fallback)"
         }
 
     score = clamp(sum(parts)/len(parts), 0.0, 1.0)
@@ -263,14 +315,14 @@ def compute_term_structure_driver():
     return {
         "score": round(score, 2),
         "contribution": contrib,
-        "funding_ann_pct": None if fund_ann_pct is None else round(fund_ann_pct, 2),
-        "funding_8h_pct": None if fund_8h_pct is None else round(fund_8h_pct, 4),
-        "perp_premium_now_pct": None if prem_now_pct is None else round(prem_now_pct, 3),
-        "perp_premium_7d_pct": None if prem_7d_pct is None else round(prem_7d_pct, 3),
-        "source": "Binance futures (public)"
+        "funding_ann_pct": None if fann is None else round(fann, 2),
+        "funding_8h_pct": None if f8 is None else round(f8, 4),
+        "perp_premium_now_pct": None if prem_now is None else round(prem_now, 3),
+        "perp_premium_7d_pct": None if prem_7d is None else round(prem_7d, 3),
+        "source": "Binance/OKX/BitMEX (fallback)"
     }
 
-# ===== base risk placeholder (until we wire the full composite) =====
+# ===== base risk placeholder =====
 prev_risk = 0.35
 if latest_path.exists():
     try: prev_risk = float(json.loads(latest_path.read_text()).get("risk", 0.35))
@@ -348,6 +400,5 @@ latest_path.write_text(json.dumps(doc, indent=2))
 (HIST / f"{as_of}.json").write_text(json.dumps(doc, indent=2))
 
 print(f"[run_daily] OK risk={risk:.2f} band={band} btc={btc_price} "
-      f"etf_usd={etf_usd} etf_sma7={sma7_etf} sc_today={sc_today} sc_sma7={sc_sma7} "
       f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
       f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')}")
