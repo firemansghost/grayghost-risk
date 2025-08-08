@@ -31,9 +31,10 @@ async function main() {
 
     // ===== helpers =====
     const fmtSignedUSD = (v) => {
-      if (v === null || v === undefined || isNaN(v)) return { text: '—', cls: 'neu' };
-      const sign = v >= 0 ? '+' : '−';
-      return { text: `${sign}$${Math.abs(Number(v)).toLocaleString()}`, cls: v >= 0 ? 'pos' : 'neg' };
+      const n = Number(v);
+      if (!isFinite(n) || Math.abs(n) < 1) return { text: '—', cls: 'neu' }; // avoid $0
+      const sign = n >= 0 ? '+' : '−';
+      return { text: `${sign}$${Math.abs(n).toLocaleString()}`, cls: n >= 0 ? 'pos' : 'neg' };
     };
 
     // ===== Driver gauges =====
@@ -51,17 +52,19 @@ async function main() {
         const g = data.drivers[k];
         if (!g) continue;
 
-        // Extra lines only for ETF flows (color-coded)
+        // Extra lines for ETF flows — prefer ROOT fields, fallback to nested
         let extra = '';
         if (k === 'etf_flows') {
-          const raw = g.raw_usd ?? data.etf_flow_usd;           // today
-          const sma = g.sma7_usd ?? data.etf_flow_sma7_usd;     // 7d avg
+          const raw = (typeof data.etf_flow_usd === 'number') ? data.etf_flow_usd : g.raw_usd;
+          const sma = (typeof data.etf_flow_sma7_usd === 'number') ? data.etf_flow_sma7_usd : g.sma7_usd;
           const rawFmt = fmtSignedUSD(raw);
           const smaFmt = fmtSignedUSD(sma);
           extra = `
             <div class="title">Today: <span class="${rawFmt.cls}">${rawFmt.text}</span></div>
             <div class="title">7d Avg: <span class="${smaFmt.cls}">${smaFmt.text}</span></div>
           `;
+          // Debug if you ever need it:
+          // console.log('ETF flows raw/sma7', raw, sma, data.etf_flow_usd, data.etf_flow_sma7_usd, g);
         }
 
         const div = document.createElement('div');
