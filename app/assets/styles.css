@@ -52,3 +52,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .cool { color: var(--green); }
 .neu  { color: var(--fg-muted); }
 
+/* --- tiny sparklines --- */
+.gauge .sparkline { margin-top: 8px; height: 28px; }
+.gauge .sparkline svg { width: 100%; height: 28px; display: block; }
+.spark-bg { stroke: #ffffff20; stroke-width: 1; fill: none; }
+.spark     { stroke: var(--fg-muted); stroke-width: 2; fill: none; opacity: .9; }
+.spark.up  { stroke: var(--green); }
+.spark.down{ stroke: var(--orange); }
+
+/* risk hint colors (already added earlier, keep here if missing) */
+.hot { color: var(--orange); }
+.cool { color: var(--green); }
+.neu  { color: var(--fg-muted); }
