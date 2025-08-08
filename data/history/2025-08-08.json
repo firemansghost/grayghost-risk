@@ -2,10 +2,12 @@
   "as_of": "2025-08-08",
   "risk": 0.42,
   "band": "yellow",
-  "regime": "liquidity_on",
-  "btc_price_usd": 116502.77,
+  "regime": "liquidity_off",
+  "btc_price_usd": 116791.37,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 168057142.86,
+  "stablecoin_delta_usd": 580474947.71,
+  "stablecoin_delta_sma7_usd": 189644618.55,
   "drivers": {
     "etf_flows": {
       "score": 0.3,
@@ -43,26 +45,58 @@
           "usd": 43600000.0
         }
       ],
-      "source": "Farside 'Bitcoin ETF Flow \u2013 All Data'"
+      "source": "Farside Bitcoin ETF Flow \u2013 All Data"
     },
     "net_liquidity": {
-      "score": 0.44,
-      "contribution": 0.08,
+      "score": 0.75,
+      "contribution": 0.06,
       "raw": null
     },
     "stablecoins": {
-      "score": 0.39,
-      "contribution": 0.08,
-      "raw": null
+      "score": 0.45,
+      "contribution": -0.01,
+      "raw_delta_usd": 580474947.71,
+      "sma7_delta_usd": 189644618.55,
+      "trailing": [
+        {
+          "date": "08 Aug 2025",
+          "usd": 580474947.71
+        },
+        {
+          "date": "08 Aug 2025",
+          "usd": 326281091.26
+        },
+        {
+          "date": "07 Aug 2025",
+          "usd": 46456522.59
+        },
+        {
+          "date": "06 Aug 2025",
+          "usd": 196967908.19
+        },
+        {
+          "date": "05 Aug 2025",
+          "usd": 191952656.82
+        },
+        {
+          "date": "04 Aug 2025",
+          "usd": 15099115.29
+        },
+        {
+          "date": "03 Aug 2025",
+          "usd": -29719911.98
+        }
+      ],
+      "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": {
-      "score": 0.21,
-      "contribution": 0.12,
+      "score": 0.49,
+      "contribution": 0.05,
       "raw_basis_pct": null
     },
     "onchain": {
-      "score": 0.65,
-      "contribution": 0.08,
+      "score": 0.44,
+      "contribution": 0.07,
       "raw": null
     }
   }
