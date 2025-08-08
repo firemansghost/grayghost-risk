@@ -6,6 +6,7 @@ DATA = ROOT / "data"; DATA.mkdir(parents=True, exist_ok=True)
 HIST = DATA / "history"; HIST.mkdir(parents=True, exist_ok=True)
 
 as_of = datetime.date.today().isoformat()
+as_of_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 latest_path = DATA / "latest.json"
 
 # ----- utils -----
