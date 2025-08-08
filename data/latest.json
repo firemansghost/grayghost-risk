@@ -1,14 +1,14 @@
 {
   "as_of": "2025-08-08",
-  "as_of_utc": "2025-08-08T20:03:01Z",
-  "risk": 0.43,
+  "as_of_utc": "2025-08-08T20:20:44Z",
+  "risk": 0.45,
   "band": "yellow",
   "regime": "liquidity_off",
-  "btc_price_usd": 116375.01,
+  "btc_price_usd": 116453.01,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 168057142.86,
-  "stablecoin_delta_usd": 570365983.53,
-  "stablecoin_delta_sma7_usd": 188200480.81,
+  "stablecoin_delta_usd": 578702059.77,
+  "stablecoin_delta_sma7_usd": 189391348.85,
   "drivers": {
     "etf_flows": {
       "score": 0.3,
@@ -46,7 +46,7 @@
           "usd": 43600000.0
         }
       ],
-      "source": "Farside Bitcoin ETF Flow \u2013 All Data"
+      "source": "Farside Bitcoin ETF Flow - All Data"
     },
     "net_liquidity": {
       "score": 0.49,
@@ -84,17 +84,17 @@
           "usd": 0.0
         }
       ],
-      "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD (USD)"
+      "source": "FRED WALCL - WTREGEN - RRPONTSYD (USD)"
     },
     "stablecoins": {
       "score": 0.45,
       "contribution": -0.01,
-      "raw_delta_usd": 570365983.53,
-      "sma7_delta_usd": 188200480.81,
+      "raw_delta_usd": 578702059.77,
+      "sma7_delta_usd": 189391348.85,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": 570365983.53
+          "usd": 578702059.77
         },
         {
           "date": "08 Aug 2025",
@@ -130,11 +130,11 @@
       "funding_8h_pct": 0.006,
       "perp_premium_now_pct": null,
       "perp_premium_7d_pct": null,
-      "source": "Binance/OKX/BitMEX (fallback)"
+      "source": "Binance/OKX/BitMEX/Bybit (fallback)"
     },
     "onchain": {
-      "score": 0.67,
-      "contribution": 0.08,
+      "score": 0.22,
+      "contribution": -0.05,
       "raw": null
     }
   }
