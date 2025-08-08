@@ -8,36 +8,25 @@ async function main() {
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
     const data = await res.json();
 
-    // ===== Top card =====
-    const asOfEl = document.getElementById('asOf');
-    if (asOfEl) asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
-
-    const riskEl = document.getElementById('riskScore');
-    if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
-
+    // Top
+    const asOfEl = document.getElementById('asOf'); if (asOfEl) asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
+    const riskEl = document.getElementById('riskScore'); if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
     const bandEl = document.getElementById('riskBand');
-    if (bandEl) {
-      const band = String(data.band ?? 'yellow');
-      bandEl.textContent = band.toUpperCase();
-      bandEl.classList.add(band);
-    }
+    if (bandEl) { const band = String(data.band ?? 'yellow'); bandEl.textContent = band.toUpperCase(); bandEl.classList.add(band); }
+    const priceEl = document.getElementById('btcPrice'); if (priceEl) { const p = data.btc_price_usd; priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—'; }
 
-    // BTC price
-    const priceEl = document.getElementById('btcPrice');
-    if (priceEl) {
-      const p = data.btc_price_usd;
-      priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
-    }
-
-    // ===== helpers =====
     const fmtSignedUSD = (v) => {
       const n = Number(v);
       if (!isFinite(n) || Math.abs(n) < 1) return { text: '—', cls: 'neu' };
       const sign = n >= 0 ? '+' : '−';
       return { text: `${sign}$${Math.abs(n).toLocaleString()}`, cls: n >= 0 ? 'pos' : 'neg' };
     };
+    const fmtLevelUSD = (v) => {
+      const n = Number(v);
+      if (!isFinite(n) || n === 0) return '—';
+      return `$${n.toLocaleString()}`;
+    };
 
-    // ===== Driver gauges =====
     const gauges = document.getElementById('gauges');
     const map = {
       etf_flows: 'ETF Net Flows',
@@ -49,28 +38,29 @@ async function main() {
 
     if (gauges && data.drivers) {
       for (const k of Object.keys(map)) {
-        const g = data.drivers[k];
-        if (!g) continue;
+        const g = data.drivers[k]; if (!g) continue;
 
         let extra = '';
         if (k === 'etf_flows') {
           const raw = (typeof data.etf_flow_usd === 'number') ? data.etf_flow_usd : g.raw_usd;
           const sma = (typeof data.etf_flow_sma7_usd === 'number') ? data.etf_flow_sma7_usd : g.sma7_usd;
-          const rawFmt = fmtSignedUSD(raw);
-          const smaFmt = fmtSignedUSD(sma);
-          extra = `
-            <div class="title">Today: <span class="${rawFmt.cls}">${rawFmt.text}</span></div>
-            <div class="title">7d Avg: <span class="${smaFmt.cls}">${smaFmt.text}</span></div>
-          `;
+          const r = fmtSignedUSD(raw), s = fmtSignedUSD(sma);
+          extra = `<div class="title">Today: <span class="${r.cls}">${r.text}</span></div>
+                   <div class="title">7d Avg: <span class="${s.cls}">${s.text}</span></div>`;
         } else if (k === 'stablecoins') {
           const raw = (typeof data.stablecoin_delta_usd === 'number') ? data.stablecoin_delta_usd : g.raw_delta_usd;
           const sma = (typeof data.stablecoin_delta_sma7_usd === 'number') ? data.stablecoin_delta_sma7_usd : g.sma7_delta_usd;
-          const rawFmt = fmtSignedUSD(raw);
-          const smaFmt = fmtSignedUSD(sma);
-          extra = `
-            <div class="title">Today: <span class="${rawFmt.cls}">${rawFmt.text}</span></div>
-            <div class="title">7d Avg: <span class="${smaFmt.cls}">${smaFmt.text}</span></div>
-          `;
+          const r = fmtSignedUSD(raw), s = fmtSignedUSD(sma);
+          extra = `<div class="title">Today: <span class="${r.cls}">${r.text}</span></div>
+                   <div class="title">7d Avg: <span class="${s.cls}">${s.text}</span></div>`;
+        } else if (k === 'net_liquidity') {
+          const lvl = g.level_usd;
+          const d1  = g.delta1d_usd;
+          const sma = g.sma7_delta_usd;
+          const d1f = fmtSignedUSD(d1), s = fmtSignedUSD(sma);
+          extra = `<div class="title">Level: ${fmtLevelUSD(lvl)}</div>
+                   <div class="title">Today: <span class="${d1f.cls}">${d1f.text}</span></div>
+                   <div class="title">7d Avg: <span class="${s.cls}">${s.text}</span></div>`;
         }
 
         const div = document.createElement('div');
@@ -85,27 +75,22 @@ async function main() {
       }
     }
 
-    // ===== "Why it moved" bars =====
     const contribs = document.getElementById('contribs');
     if (contribs && data.drivers) {
       for (const k of Object.keys(map)) {
-        const g = data.drivers[k];
-        if (!g) continue;
+        const g = data.drivers[k]; if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
-        const width = Math.min(100, Math.abs(g.contribution * 1000)); // demo scale
+        const width = Math.min(100, Math.abs(g.contribution * 1000));
         const color = g.contribution >= 0 ? 'var(--orange)' : 'var(--green)';
-        div.innerHTML = `
-          <div class="title">${map[k]}</div>
-          <div class="bar"><span style="width:${width}%; background:${color};"></span></div>
-        `;
+        div.innerHTML = `<div class="title">${map[k]}</div>
+                         <div class="bar"><span style="width:${width}%; background:${color};"></span></div>`;
         contribs.appendChild(div);
       }
     }
   } catch (e) {
     console.error(e);
-    const riskEl = document.getElementById('riskScore');
-    if (riskEl) riskEl.textContent = 'N/A';
+    const riskEl = document.getElementById('riskScore'); if (riskEl) riskEl.textContent = 'N/A';
   }
 }
 main();
