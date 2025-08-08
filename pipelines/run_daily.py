@@ -377,29 +377,40 @@ drivers = {
     "onchain": {"score": round(random.uniform(0.2,0.8),2), "contribution": round(random.uniform(-0.08,0.12),2), "raw": None}
 }
 
-# ----- BTC price & write -----
+# ----- BTC price & final write -----
 prev_doc = {}
 if latest_path.exists():
-    try: prev_doc = json.loads(latest_path.read_text())
-    except Exception: pass
+    try:
+        prev_doc = json.loads(latest_path.read_text())
+    except Exception:
+        pass
+
 btc_price = fetch_btc_price_usd() or prev_doc.get("btc_price_usd")
 
 doc = {
-    "as_of": as_of,
+    "as_of": as_of,                 # YYYY-MM-DD (date)
+    "as_of_utc": as_of_utc,         # 2025-08-08T12:00:03Z (UTC timestamp)
     "risk": round(risk, 2),
     "band": band,
     "regime": regime,
     "btc_price_usd": btc_price,
+
+    # convenience root fields for UI
     "etf_flow_usd": etf_usd,
     "etf_flow_sma7_usd": sma7_etf,
     "stablecoin_delta_usd": sc_today,
     "stablecoin_delta_sma7_usd": sc_sma7,
+
+    # full drivers
     "drivers": drivers
 }
 
 latest_path.write_text(json.dumps(doc, indent=2))
 (HIST / f"{as_of}.json").write_text(json.dumps(doc, indent=2))
 
-print(f"[run_daily] OK risk={risk:.2f} band={band} btc={btc_price} "
-      f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
-      f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')}")
+print(
+    f"[run_daily] OK risk={risk:.2f} band={band} btc={btc_price} "
+    f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
+    f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')} "
+    f"asof_utc={as_of_utc}"
+)
