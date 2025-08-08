@@ -8,7 +8,6 @@ async function main() {
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
     const data = await res.json();
 
-    // window label for avgs (uses backend smooth_days if present)
     const WINDOW_DAYS = data.smooth_days ?? 7;
     const avgLabel = `Avg (${WINDOW_DAYS}d)`;
 
@@ -63,7 +62,7 @@ async function main() {
     const fmtPctOrBp = (v) => {
       const n = Number(v);
       if (!isFinite(n)) return '—';
-      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(2)} bp`; // <0.10% → bp
+      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(2)} bp`;
       return `${n.toFixed(2)}%`;
     };
 
@@ -86,39 +85,69 @@ async function main() {
     // ===== sparkline helpers =====
     const isNum = (v) => Number.isFinite(Number(v));
     function makeSparkline(trailing) {
-      const vals = (trailing || [])
-        .map(d => d && isNum(d.usd) ? Number(d.usd) : null)
-        .filter(v => v !== null)
-        .reverse(); // draw oldest → newest
-
+      const series = (trailing || []).slice().reverse(); // oldest -> newest for drawing & tooltip
+      const vals = series.map(d => d && isNum(d.usd) ? Number(d.usd) : null).filter(v => v !== null);
       if (vals.length < 2) return '';
 
       const w = 100, h = 28, pad = 1;
       let min = Math.min(...vals), max = Math.max(...vals);
       if (min === max) { min -= 1; max += 1; }
-      const scaleX = (i) => pad + (i * (w - 2*pad) / (vals.length - 1));
-      const scaleY = (v) => {
-        const t = (v - min) / (max - min);     // 0..1
-        return (h - pad) - t * (h - 2*pad);    // invert
+      const sx = (i) => pad + (i * (w - 2*pad) / (vals.length - 1));
+      const sy = (v) => {
+        const t = (v - min) / (max - min);
+        return (h - pad) - t * (h - 2*pad);
       };
 
-      let d = `M ${scaleX(0)} ${scaleY(vals[0])}`;
-      for (let i = 1; i < vals.length; i++) d += ` L ${scaleX(i)} ${scaleY(vals[i])}`;
-
+      let d = `M ${sx(0)} ${sy(vals[0])}`;
+      for (let i = 1; i < vals.length; i++) d += ` L ${sx(i)} ${sy(vals[i])}`;
       const cls = vals[vals.length - 1] >= vals[0] ? 'up' : 'down';
 
-      // faint baseline from min→max for context
-      const y0 = scaleY(min), y1 = scaleY(max);
+      const y0 = sy(min), y1 = sy(max);
       const bg = `<path class="spark-bg" d="M ${pad} ${y0} L ${w-pad} ${y0} M ${pad} ${y1} L ${w-pad} ${y1}" />`;
+      const seriesAttr = encodeURIComponent(JSON.stringify(series));
 
       return `
-        <div class="sparkline">
+        <div class="sparkline" data-series="${seriesAttr}">
           <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
             ${bg}
             <path class="spark ${cls}" d="${d}" />
+            <rect x="0" y="0" width="${w}" height="${h}" fill="transparent"></rect>
           </svg>
         </div>
       `;
+    }
+
+    function attachSparklineTooltips() {
+      const tip = document.createElement('div');
+      tip.className = 'spark-tip';
+      document.body.appendChild(tip);
+
+      document.querySelectorAll('.sparkline').forEach(el => {
+        const raw = el.getAttribute('data-series');
+        if (!raw) return;
+        let series;
+        try { series = JSON.parse(decodeURIComponent(raw)); } catch { series = []; }
+        if (!Array.isArray(series) || series.length < 2) return;
+
+        el.addEventListener('mousemove', (e) => {
+          const rect = el.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const idx = Math.max(0, Math.min(series.length - 1, Math.round((x / rect.width) * (series.length - 1))));
+          const pt = series[idx];
+          if (!pt) return;
+
+          // compact value formatting for tip (reuse USD formatter but drop sign)
+          const v = Number(pt.usd);
+          const absFmt = humanUSD(Math.abs(v)).replace('$','');
+          tip.textContent = `${pt.date}: ${v >= 0 ? '+' : '−'}${absFmt}`;
+
+          tip.style.left = (e.pageX + 12) + 'px';
+          tip.style.top  = (e.pageY + 12) + 'px';
+          tip.style.opacity = '1';
+        });
+
+        el.addEventListener('mouseleave', () => { tip.style.opacity = '0'; });
+      });
     }
 
     // ===== Driver gauges =====
@@ -187,6 +216,8 @@ async function main() {
         `;
         gauges.appendChild(div);
       }
+      // after the DOM exists, hook up tooltips
+      attachSparklineTooltips();
     }
 
     // ===== "Why it moved" bars =====
