@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  run:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
           ls -la data || true
           ls -la pipelines || true
 
-            - name: Run daily pipeline
+      - name: Run daily pipeline
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python pipelines/run_daily.py
