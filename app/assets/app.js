@@ -8,25 +8,48 @@ async function main() {
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
     const data = await res.json();
 
-    // Top
-    const asOfEl = document.getElementById('asOf'); if (asOfEl) asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
-    const riskEl = document.getElementById('riskScore'); if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
+    // ===== Top card =====
+    const asOfEl = document.getElementById('asOf');
+    if (asOfEl) asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
+
+    const riskEl = document.getElementById('riskScore');
+    if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
+
     const bandEl = document.getElementById('riskBand');
-    if (bandEl) { const band = String(data.band ?? 'yellow'); bandEl.textContent = band.toUpperCase(); bandEl.classList.add(band); }
-    const priceEl = document.getElementById('btcPrice'); if (priceEl) { const p = data.btc_price_usd; priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—'; }
+    if (bandEl) {
+      const band = String(data.band ?? 'yellow');
+      bandEl.textContent = band.toUpperCase();
+      bandEl.classList.add(band);
+    }
+
+    // BTC price
+    const priceEl = document.getElementById('btcPrice');
+    if (priceEl) {
+      const p = data.btc_price_usd;
+      priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
+    }
+
+    // ===== helpers (human-readable USD) =====
+    const humanUSD = (n) => {
+      const x = Number(n);
+      if (!isFinite(x)) return '—';
+      const ax = Math.abs(x);
+      if (ax >= 1e12) return `$${(x / 1e12).toFixed(2)}T`;
+      if (ax >= 1e9)  return `$${(x / 1e9).toFixed(2)}B`;
+      if (ax >= 1e6)  return `$${(x / 1e6).toFixed(2)}M`;
+      return `$${x.toLocaleString()}`;
+    };
 
     const fmtSignedUSD = (v) => {
-      const n = Number(v);
-      if (!isFinite(n) || Math.abs(n) < 1) return { text: '—', cls: 'neu' };
-      const sign = n >= 0 ? '+' : '−';
-      return { text: `${sign}$${Math.abs(n).toLocaleString()}`, cls: n >= 0 ? 'pos' : 'neg' };
-    };
-    const fmtLevelUSD = (v) => {
-      const n = Number(v);
-      if (!isFinite(n) || n === 0) return '—';
-      return `$${n.toLocaleString()}`;
+      const x = Number(v);
+      if (!isFinite(x) || Math.abs(x) < 1) return { text: '—', cls: 'neu' };
+      const sign = x >= 0 ? '+' : '−';
+      return { text: `${sign}${humanUSD(Math.abs(x))}`, cls: x >= 0 ? 'pos' : 'neg' };
     };
 
+    const fmtLevelUSD = (v) => humanUSD(v);
+
+    // ===== Driver gauges =====
     const gauges = document.getElementById('gauges');
     const map = {
       etf_flows: 'ETF Net Flows',
@@ -38,7 +61,8 @@ async function main() {
 
     if (gauges && data.drivers) {
       for (const k of Object.keys(map)) {
-        const g = data.drivers[k]; if (!g) continue;
+        const g = data.drivers[k];
+        if (!g) continue;
 
         let extra = '';
         if (k === 'etf_flows') {
@@ -75,10 +99,12 @@ async function main() {
       }
     }
 
+    // ===== "Why it moved" bars =====
     const contribs = document.getElementById('contribs');
     if (contribs && data.drivers) {
       for (const k of Object.keys(map)) {
-        const g = data.drivers[k]; if (!g) continue;
+        const g = data.drivers[k];
+        if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
         const width = Math.min(100, Math.abs(g.contribution * 1000));
@@ -90,7 +116,8 @@ async function main() {
     }
   } catch (e) {
     console.error(e);
-    const riskEl = document.getElementById('riskScore'); if (riskEl) riskEl.textContent = 'N/A';
+    const riskEl = document.getElementById('riskScore');
+    if (riskEl) riskEl.textContent = 'N/A';
   }
 }
 main();
