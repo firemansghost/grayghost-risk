@@ -36,7 +36,7 @@ async function main() {
       priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
     }
 
-    // ===== helpers (human-readable USD & %) =====
+    // ===== helpers =====
     const humanUSD = (n) => {
       const x = Number(n);
       if (!isFinite(x)) return '—';
@@ -59,9 +59,27 @@ async function main() {
     const fmtPctOrBp = (v) => {
       const n = Number(v);
       if (!isFinite(n)) return '—';
-      // show basis points if magnitude < 0.10%
-      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(1)} bp`;
+      // basis points if magnitude < 0.10%
+      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(2)} bp`;
       return `${n.toFixed(2)}%`;
+    };
+
+    // color classes for term-structure lines
+    const clsFunding = (ann) => {
+      const n = Number(ann);
+      if (!isFinite(n)) return 'neu';
+      // neutral around ~10% annualized
+      if (n >= 12) return 'hot';
+      if (n <= 8)  return 'cool';
+      return 'neu';
+    };
+    const clsPremium = (pct) => {
+      const n = Number(pct);
+      if (!isFinite(n)) return 'neu';
+      // premium > +0.15% = hot, < −0.10% = cool
+      if (n >= 0.15) return 'hot';
+      if (n <= -0.10) return 'cool';
+      return 'neu';
     };
 
     // ===== Driver gauges =====
@@ -109,9 +127,11 @@ async function main() {
         } else if (k === 'term_structure') {
           const fAnn = g.funding_ann_pct;
           const prem = g.perp_premium_7d_pct;
+          const fCls = clsFunding(fAnn);
+          const pCls = clsPremium(prem);
           extra = `
-            <div class="title">Funding (ann.): ${fmtPct(fAnn)}</div>
-            <div class="title">Perp Premium (7d): ${fmtPctOrBp(prem)}</div>
+            <div class="title">Funding (ann.): <span class="${fCls}">${fmtPct(fAnn)}</span></div>
+            <div class="title">Perp Premium (7d): <span class="${pCls}">${fmtPctOrBp(prem)}</span></div>
           `;
         }
 
@@ -135,7 +155,7 @@ async function main() {
         if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
-        const width = Math.min(100, Math.abs(g.contribution * 1000)); // simple demo scale
+        const width = Math.min(100, Math.abs(g.contribution * 1000)); // demo scale
         const color = g.contribution >= 0 ? 'var(--orange)' : 'var(--green)';
         div.innerHTML = `
           <div class="title">${map[k]}</div>
