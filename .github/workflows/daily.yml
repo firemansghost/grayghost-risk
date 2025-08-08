@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "0 12 * * *"   # 07:00 CT (12:00 UTC)
   workflow_dispatch:
 
 jobs:
@@ -13,23 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install -r pipelines/requirements.txt
-      - name: Run daily pipeline
+
+      - name: Show Python version
+        run: python --version
+
+      - name: Run daily pipeline (stdlib only)
         run: python pipelines/run_daily.py
-      - name: Optional: send email if band changed
-        if: ${{ secrets.SMTP_HOST != '' && secrets.ALERT_EMAILS != '' }}
-        env:
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          SMTP_FROM: ${{ secrets.SMTP_FROM }}
-          ALERT_EMAILS: ${{ secrets.ALERT_EMAILS }}
-        run: python pipelines/alert_email.py
-      - uses: stefanzweifel/git-auto-commit-action@v5
+
+      - name: Commit updated data
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update risk data"
-
