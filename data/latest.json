@@ -1,15 +1,15 @@
 {
   "as_of": "2025-08-08",
-  "as_of_utc": "2025-08-08T21:09:50Z",
+  "as_of_utc": "2025-08-08T21:25:16Z",
   "smooth_days": 21,
   "risk": 0.44,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 116853.98,
+  "btc_price_usd": 116822.34,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 106228571.43,
-  "stablecoin_delta_usd": 663956567.08,
-  "stablecoin_delta_sma7_usd": 180770083.42,
+  "stablecoin_delta_usd": 659417050.43,
+  "stablecoin_delta_sma7_usd": 180553915.96,
   "drivers": {
     "etf_flows": {
       "score": 0.37,
@@ -202,12 +202,12 @@
     "stablecoins": {
       "score": 0.45,
       "contribution": -0.01,
-      "raw_delta_usd": 663956567.08,
-      "sma7_delta_usd": 180770083.42,
+      "raw_delta_usd": 659417050.43,
+      "sma7_delta_usd": 180553915.96,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": 663956567.08
+          "usd": 659417050.43
         },
         {
           "date": "08 Aug 2025",
@@ -293,17 +293,17 @@
       "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": {
-      "score": 0.47,
+      "score": 0.46,
       "contribution": -0.01,
       "funding_ann_pct": 6.53,
       "funding_8h_pct": 0.006,
-      "perp_premium_now_pct": 0.023,
-      "perp_premium_7d_pct": 0.023,
+      "perp_premium_now_pct": 0.004,
+      "perp_premium_7d_pct": 0.004,
       "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     },
     "onchain": {
-      "score": 0.57,
-      "contribution": 0.01,
+      "score": 0.26,
+      "contribution": -0.05,
       "raw": null
     }
   }
