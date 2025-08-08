@@ -183,40 +183,60 @@ def compute_net_liquidity():
 
 # ----- Term Structure & Leverage (Binance) -----
 def fetch_binance_funding_7d_annual_pct():
-    """Return 7d avg funding per 8h (decimal) and annualized percent."""
+    """Return (funding_per_8h_pct, funding_annualized_pct). Robust with fallbacks."""
+    # Primary: full history (last ~7 days = 21 entries)
     try:
         j = http_json("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000", timeout=20)
-        # take last 7 days ≈ 21 entries (3 per day)
-        rates = [float(x["fundingRate"]) for x in j[-21:]] if j else []
-        if not rates: return None, None
-        avg_8h = sum(rates)/len(rates)                         # decimal per 8h (e.g., 0.0001 = 0.01%)
-        annual_pct = avg_8h * 3 * 365 * 100.0                  # percent per year
-        return avg_8h*100.0, annual_pct                        # return (% per 8h, % annualized)
+        rates = [float(x.get("fundingRate", 0.0)) for x in j][-21:] if isinstance(j, list) else []
+        # Filter obvious garbage
+        rates = [r for r in rates if abs(r) > 1e-10]
+        if rates:
+            avg_8h = sum(rates) / len(rates)               # decimal per 8h
+            return avg_8h * 100.0, avg_8h * 3 * 365 * 100.0
     except Exception as e:
-        print(f"[run_daily] WARN funding fetch failed: {e}", file=sys.stderr)
-        return None, None
+        print(f"[run_daily] WARN funding history failed: {e}", file=sys.stderr)
 
-def fetch_binance_premium_now_and_7d_pct():
-    """Return current premium % and 7d avg premium % (perp mark vs index)."""
+    # Fallback: use current lastFundingRate from premiumIndex
     try:
         now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
-        mark = float(now["markPrice"]); index = float(now["indexPrice"])
-        now_pct = (mark - index) / index * 100.0
+        last = float(now.get("lastFundingRate", 0.0))
+        if abs(last) > 1e-10:
+            return last * 100.0, last * 3 * 365 * 100.0
+    except Exception as e:
+        print(f"[run_daily] WARN funding fallback failed: {e}", file=sys.stderr)
+
+    return None, None
+
+def fetch_binance_premium_now_and_7d_pct():
+    """Return (current_premium_pct, 7d_avg_premium_pct)."""
+    now_pct = None
+    try:
+        now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
+        mark = float(now.get("markPrice"))
+        index = float(now.get("indexPrice"))
+        if index:
+            now_pct = (mark - index) / index * 100.0
     except Exception as e:
         print(f"[run_daily] WARN premium now fetch failed: {e}", file=sys.stderr)
-        now_pct = None
 
     avg_pct = None
     try:
-        # 168 hourly candles ≈ 7 days
         arr = http_json("https://fapi.binance.com/fapi/v1/premiumIndexKlines?symbol=BTCUSDT&interval=1h&limit=168", timeout=20)
-        closes = [float(x[4]) for x in arr]  # close column is premium ratio
+        # each item: [openTime, open, high, low, close, ...] where values are the *ratio* (decimal)
+        closes = [float(x[4]) for x in arr] if isinstance(arr, list) else []
+        closes = [c for c in closes if abs(c) > 1e-12]
         if closes:
-            avg_pct = sum(closes)/len(closes) * 100.0
+            avg_pct = (sum(closes) / len(closes)) * 100.0
+        elif now_pct is not None:
+            # fallback: use current as a proxy for 7d avg if klines empty
+            avg_pct = now_pct
     except Exception as e:
-        print(f"[run_daily] WARN premium klines fetch failed: {e}", file=sys.stderr)
+        print(f"[run_daily] WARN premium klines failed: {e}", file=sys.stderr)
+        if now_pct is not None:
+            avg_pct = now_pct
 
     return now_pct, avg_pct
+
 
 def compute_term_structure_driver():
     fund_8h_pct, fund_ann_pct = fetch_binance_funding_7d_annual_pct()
