@@ -64,3 +64,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .hot { color: var(--orange); }
 .cool { color: var(--green); }
 .neu  { color: var(--fg-muted); }
+
+/* --- tiny sparkline tooltips --- */
+.spark-tip{
+  position: fixed;
+  pointer-events: none;
+  background: #0b1220;
+  border: 1px solid #ffffff20;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--fg);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity .1s ease;
+  white-space: nowrap;
+}
