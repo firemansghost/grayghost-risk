@@ -1,13 +1,11 @@
 // app/assets/app.js
 async function main() {
   try {
-    // Pull the latest risk JSON from your GitHub repo
     const DATA_URL =
       'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/latest.json?ts=' + Date.now();
 
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
-
     const data = await res.json();
 
     // ===== Top card =====
@@ -21,7 +19,7 @@ async function main() {
     if (bandEl) {
       const band = String(data.band ?? 'yellow');
       bandEl.textContent = band.toUpperCase();
-      bandEl.classList.add(band); // .green/.yellow/.red
+      bandEl.classList.add(band);
     }
 
     // BTC price
@@ -30,6 +28,13 @@ async function main() {
       const p = data.btc_price_usd;
       priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
     }
+
+    // ===== helpers =====
+    const fmtSignedUSD = (v) => {
+      if (v === null || v === undefined || isNaN(v)) return { text: '—', cls: 'neu' };
+      const sign = v >= 0 ? '+' : '−';
+      return { text: `${sign}$${Math.abs(Number(v)).toLocaleString()}`, cls: v >= 0 ? 'pos' : 'neg' };
+    };
 
     // ===== Driver gauges =====
     const gauges = document.getElementById('gauges');
@@ -41,25 +46,21 @@ async function main() {
       onchain: 'On-chain Value'
     };
 
-    const fmtUSD = (v) => {
-      if (v === null || v === undefined || isNaN(v)) return '—';
-      const sign = v >= 0 ? '+' : '−';
-      return `${sign}$${Math.abs(Number(v)).toLocaleString()}`;
-    };
-
     if (gauges && data.drivers) {
       for (const k of Object.keys(map)) {
         const g = data.drivers[k];
         if (!g) continue;
 
-        // Extra lines only for ETF flows
+        // Extra lines only for ETF flows (color-coded)
         let extra = '';
         if (k === 'etf_flows') {
           const raw = g.raw_usd ?? data.etf_flow_usd;           // today
           const sma = g.sma7_usd ?? data.etf_flow_sma7_usd;     // 7d avg
+          const rawFmt = fmtSignedUSD(raw);
+          const smaFmt = fmtSignedUSD(sma);
           extra = `
-            <div class="title">Today: ${fmtUSD(raw)}</div>
-            <div class="title">7d Avg: ${fmtUSD(sma)}</div>
+            <div class="title">Today: <span class="${rawFmt.cls}">${rawFmt.text}</span></div>
+            <div class="title">7d Avg: <span class="${smaFmt.cls}">${smaFmt.text}</span></div>
           `;
         }
 
