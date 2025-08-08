@@ -1,13 +1,13 @@
 {
   "as_of": "2025-08-08",
-  "risk": 0.41,
+  "risk": 0.42,
   "band": "yellow",
-  "regime": "liquidity_on",
-  "btc_price_usd": 116459.93,
+  "regime": "liquidity_off",
+  "btc_price_usd": 116497.52,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 168057142.86,
-  "stablecoin_delta_usd": 574207657.7,
-  "stablecoin_delta_sma7_usd": 188749291.41,
+  "stablecoin_delta_usd": 570539127.51,
+  "stablecoin_delta_sma7_usd": 188225215.67,
   "drivers": {
     "etf_flows": {
       "score": 0.3,
@@ -48,31 +48,31 @@
       "source": "Farside Bitcoin ETF Flow \u2013 All Data"
     },
     "net_liquidity": {
-      "score": 0.5,
-      "contribution": 0.0,
-      "level_usd": 6640341.65,
-      "delta1d_usd": -2.34,
-      "sma7_delta_usd": -252.63,
+      "score": 0.49,
+      "contribution": -0.0,
+      "level_usd": 6560118957000.0,
+      "delta1d_usd": -2342000000.0,
+      "sma7_delta_usd": 2191066285.71,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": -2.34
+          "usd": -2342000000.0
         },
         {
           "date": "07 Aug 2025",
-          "usd": 14.0
+          "usd": 14005000000.0
         },
         {
           "date": "06 Aug 2025",
-          "usd": -1793.15
+          "usd": -9395536000.0
         },
         {
           "date": "05 Aug 2025",
-          "usd": 41.37
+          "usd": 41374000000.0
         },
         {
           "date": "04 Aug 2025",
-          "usd": -28.3
+          "usd": -28304000000.0
         },
         {
           "date": "03 Aug 2025",
@@ -83,17 +83,17 @@
           "usd": 0.0
         }
       ],
-      "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD"
+      "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD (USD corrected)"
     },
     "stablecoins": {
       "score": 0.45,
       "contribution": -0.01,
-      "raw_delta_usd": 574207657.7,
-      "sma7_delta_usd": 188749291.41,
+      "raw_delta_usd": 570539127.51,
+      "sma7_delta_usd": 188225215.67,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": 574207657.7
+          "usd": 570539127.51
         },
         {
           "date": "08 Aug 2025",
@@ -123,13 +123,13 @@
       "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": {
-      "score": 0.6,
-      "contribution": 0.06,
+      "score": 0.58,
+      "contribution": 0.01,
       "raw_basis_pct": null
     },
     "onchain": {
-      "score": 0.36,
-      "contribution": 0.07,
+      "score": 0.34,
+      "contribution": 0.03,
       "raw": null
     }
   }
