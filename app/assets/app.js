@@ -10,14 +10,14 @@ async function main() {
 
     // ===== Top card =====
     const asOfEl = document.getElementById('asOf');
-if (asOfEl) {
-  if (data.as_of_utc) {
-    const d = new Date(data.as_of_utc);
-    asOfEl.textContent = 'Updated ' + d.toUTCString().replace('GMT','UTC');
-  } else {
-    asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
-  }
-}
+    if (asOfEl) {
+      if (data.as_of_utc) {
+        const d = new Date(data.as_of_utc);
+        asOfEl.textContent = 'Updated ' + d.toUTCString().replace('GMT', 'UTC');
+      } else {
+        asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
+      }
+    }
 
     const riskEl = document.getElementById('riskScore');
     if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
@@ -56,6 +56,13 @@ if (asOfEl) {
 
     const fmtLevelUSD = (v) => humanUSD(v);
     const fmtPct = (v) => (isFinite(Number(v)) ? `${Number(v).toFixed(2)}%` : '—');
+    const fmtPctOrBp = (v) => {
+      const n = Number(v);
+      if (!isFinite(n)) return '—';
+      // show basis points if magnitude < 0.10%
+      if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(1)} bp`;
+      return `${n.toFixed(2)}%`;
+    };
 
     // ===== Driver gauges =====
     const gauges = document.getElementById('gauges');
@@ -104,14 +111,9 @@ if (asOfEl) {
           const prem = g.perp_premium_7d_pct;
           extra = `
             <div class="title">Funding (ann.): ${fmtPct(fAnn)}</div>
-            <div class="title">Perp Premium (7d): } else if (k === 'term_structure') {
-  const fAnn = g.funding_ann_pct;
-  const prem = g.perp_premium_7d_pct;
-  extra = `
-    <div class="title">Funding (ann.): ${fmtPct(fAnn)}</div>
-    <div class="title">Perp Premium (7d): ${fmtPctOrBp(prem)}</div>
-  `;
-}
+            <div class="title">Perp Premium (7d): ${fmtPctOrBp(prem)}</div>
+          `;
+        }
 
         const div = document.createElement('div');
         div.className = 'gauge';
@@ -133,7 +135,7 @@ if (asOfEl) {
         if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
-        const width = Math.min(100, Math.abs(g.contribution * 1000)); // demo scale
+        const width = Math.min(100, Math.abs(g.contribution * 1000)); // simple demo scale
         const color = g.contribution >= 0 ? 'var(--orange)' : 'var(--green)';
         div.innerHTML = `
           <div class="title">${map[k]}</div>
