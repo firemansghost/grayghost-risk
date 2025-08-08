@@ -10,7 +10,14 @@ async function main() {
 
     // ===== Top card =====
     const asOfEl = document.getElementById('asOf');
-    if (asOfEl) asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
+if (asOfEl) {
+  if (data.as_of_utc) {
+    const d = new Date(data.as_of_utc);
+    asOfEl.textContent = 'Updated ' + d.toUTCString().replace('GMT','UTC');
+  } else {
+    asOfEl.textContent = 'As of ' + (data.as_of ?? '—');
+  }
+}
 
     const riskEl = document.getElementById('riskScore');
     if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
