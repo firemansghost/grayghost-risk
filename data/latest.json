@@ -1,38 +1,69 @@
 {
   "as_of": "2025-08-08",
-  "risk": 0.4,
+  "risk": 0.39,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 116344.15,
-  "etf_flow_usd": 0.0,
-  "etf_flow_sma7_usd": 0.0,
+  "btc_price_usd": 116472.22,
+  "etf_flow_usd": 655300000.0,
+  "etf_flow_sma7_usd": 168057142.86,
   "drivers": {
     "etf_flows": {
-      "score": 0.5,
-      "contribution": 0.0,
-      "raw_usd": 0.0,
-      "sma7_usd": 0.0,
+      "score": 0.3,
+      "contribution": -0.04,
+      "raw_usd": 655300000.0,
+      "sma7_usd": 168057142.86,
+      "asof": "11 Jan 2024",
+      "trailing": [
+        {
+          "date": "11 Jan 2024",
+          "usd": 655300000.0
+        },
+        {
+          "date": "12 Jan 2024",
+          "usd": 203000000.0
+        },
+        {
+          "date": "15 Jan 2024",
+          "usd": 0.0
+        },
+        {
+          "date": "16 Jan 2024",
+          "usd": -52700000.0
+        },
+        {
+          "date": "17 Jan 2024",
+          "usd": 453800000.0
+        },
+        {
+          "date": "18 Jan 2024",
+          "usd": -126600000.0
+        },
+        {
+          "date": "19 Jan 2024",
+          "usd": 43600000.0
+        }
+      ],
       "source": "Farside 'Bitcoin ETF Flow \u2013 All Data'"
     },
     "net_liquidity": {
-      "score": 0.49,
-      "contribution": -0.03,
-      "raw": 18460150052
+      "score": 0.64,
+      "contribution": 0.09,
+      "raw": null
     },
     "stablecoins": {
-      "score": 0.39,
-      "contribution": -0.08,
-      "raw": 634394695
+      "score": 0.6,
+      "contribution": 0.1,
+      "raw": null
     },
     "term_structure": {
-      "score": 0.69,
-      "contribution": -0.02,
-      "raw_basis_pct": 2.08
+      "score": 0.74,
+      "contribution": -0.06,
+      "raw_basis_pct": null
     },
     "onchain": {
-      "score": 0.48,
-      "contribution": 0.12,
-      "raw": "LTH_SOPR=0.98"
+      "score": 0.39,
+      "contribution": 0.02,
+      "raw": null
     }
   }
 }
