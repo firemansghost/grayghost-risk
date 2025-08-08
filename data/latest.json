@@ -1,15 +1,15 @@
 {
   "as_of": "2025-08-08",
-  "as_of_utc": "2025-08-08T21:25:16Z",
+  "as_of_utc": "2025-08-08T21:31:49Z",
   "smooth_days": 21,
   "risk": 0.44,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 116822.34,
+  "btc_price_usd": 116826.85,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 106228571.43,
-  "stablecoin_delta_usd": 659417050.43,
-  "stablecoin_delta_sma7_usd": 180553915.96,
+  "stablecoin_delta_usd": 648645787.29,
+  "stablecoin_delta_sma7_usd": 180040998.67,
   "drivers": {
     "etf_flows": {
       "score": 0.37,
@@ -200,14 +200,14 @@
       "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD (USD)"
     },
     "stablecoins": {
-      "score": 0.45,
+      "score": 0.46,
       "contribution": -0.01,
-      "raw_delta_usd": 659417050.43,
-      "sma7_delta_usd": 180553915.96,
+      "raw_delta_usd": 648645787.29,
+      "sma7_delta_usd": 180040998.67,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": 659417050.43
+          "usd": 648645787.29
         },
         {
           "date": "08 Aug 2025",
@@ -293,18 +293,104 @@
       "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": {
-      "score": 0.46,
+      "score": 0.47,
       "contribution": -0.01,
       "funding_ann_pct": 6.53,
       "funding_8h_pct": 0.006,
-      "perp_premium_now_pct": 0.004,
-      "perp_premium_7d_pct": 0.004,
+      "perp_premium_now_pct": 0.023,
+      "perp_premium_7d_pct": 0.023,
       "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     },
     "onchain": {
-      "score": 0.26,
-      "contribution": -0.05,
-      "raw": null
+      "score": 0.52,
+      "contribution": 0.0,
+      "trailing": [
+        {
+          "date": "07 Aug 2025",
+          "usd": 607309.12
+        },
+        {
+          "date": "06 Aug 2025",
+          "usd": 686839.55
+        },
+        {
+          "date": "05 Aug 2025",
+          "usd": 429225.69
+        },
+        {
+          "date": "04 Aug 2025",
+          "usd": 389365.35
+        },
+        {
+          "date": "03 Aug 2025",
+          "usd": 343517.13
+        },
+        {
+          "date": "02 Aug 2025",
+          "usd": 479273.66
+        },
+        {
+          "date": "01 Aug 2025",
+          "usd": 636819.85
+        },
+        {
+          "date": "31 Jul 2025",
+          "usd": 463798.96
+        },
+        {
+          "date": "30 Jul 2025",
+          "usd": 489881.73
+        },
+        {
+          "date": "29 Jul 2025",
+          "usd": 592608.29
+        },
+        {
+          "date": "28 Jul 2025",
+          "usd": 491598.08
+        },
+        {
+          "date": "27 Jul 2025",
+          "usd": 481292.31
+        },
+        {
+          "date": "26 Jul 2025",
+          "usd": 493672.23
+        },
+        {
+          "date": "25 Jul 2025",
+          "usd": 619755.61
+        },
+        {
+          "date": "24 Jul 2025",
+          "usd": 1147376.2
+        },
+        {
+          "date": "23 Jul 2025",
+          "usd": 489809.08
+        },
+        {
+          "date": "22 Jul 2025",
+          "usd": 507124.88
+        },
+        {
+          "date": "21 Jul 2025",
+          "usd": 498176.29
+        },
+        {
+          "date": "20 Jul 2025",
+          "usd": 369136.53
+        },
+        {
+          "date": "19 Jul 2025",
+          "usd": 508013.14
+        },
+        {
+          "date": "18 Jul 2025",
+          "usd": 539206.61
+        }
+      ],
+      "source": "blockchain.com charts (active addresses + tx fees)"
     }
   }
 }
