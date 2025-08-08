@@ -9,16 +9,29 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-risk:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Show Python version
-        run: python --version
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-      - name: Run daily pipeline (stdlib only)
+      - name: Ensure folders exist (debug)
+        run: |
+          mkdir -p data/history
+          ls -la
+          ls -la data || true
+          ls -la pipelines || true
+
+      - name: Run daily pipeline
         run: python pipelines/run_daily.py
+
+      - name: Show git status (debug)
+        run: |
+          git status
+          git diff --stat || true
 
       - name: Commit updated data
         uses: stefanzweifel/git-auto-commit-action@v5
