@@ -104,9 +104,14 @@ if (asOfEl) {
           const prem = g.perp_premium_7d_pct;
           extra = `
             <div class="title">Funding (ann.): ${fmtPct(fAnn)}</div>
-            <div class="title">Perp Premium (7d): ${fmtPct(prem)}</div>
-          `;
-        }
+            <div class="title">Perp Premium (7d): } else if (k === 'term_structure') {
+  const fAnn = g.funding_ann_pct;
+  const prem = g.perp_premium_7d_pct;
+  extra = `
+    <div class="title">Funding (ann.): ${fmtPct(fAnn)}</div>
+    <div class="title">Perp Premium (7d): ${fmtPctOrBp(prem)}</div>
+  `;
+}
 
         const div = document.createElement('div');
         div.className = 'gauge';
