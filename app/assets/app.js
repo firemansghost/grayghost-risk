@@ -1,8 +1,8 @@
 
 async function main(){
   try{
-    const res = await fetch('https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/latest.json', {cache:'no-store'});
-    const data = await res.json();
+    const DATA_URL = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/latest.json?ts=' + Date.now();
+    const res = await fetch(DATA_URL, { cache: 'no-store' });
     document.getElementById('asOf').textContent = 'As of ' + data.as_of;
     document.getElementById('riskScore').textContent = data.risk.toFixed(2);
     const bandEl = document.getElementById('riskBand');
