@@ -32,7 +32,7 @@ async function main() {
     // ===== helpers =====
     const fmtSignedUSD = (v) => {
       const n = Number(v);
-      if (!isFinite(n) || Math.abs(n) < 1) return { text: '—', cls: 'neu' }; // avoid $0
+      if (!isFinite(n) || Math.abs(n) < 1) return { text: '—', cls: 'neu' };
       const sign = n >= 0 ? '+' : '−';
       return { text: `${sign}$${Math.abs(n).toLocaleString()}`, cls: n >= 0 ? 'pos' : 'neg' };
     };
@@ -52,7 +52,6 @@ async function main() {
         const g = data.drivers[k];
         if (!g) continue;
 
-        // Extra lines for ETF flows — prefer ROOT fields, fallback to nested
         let extra = '';
         if (k === 'etf_flows') {
           const raw = (typeof data.etf_flow_usd === 'number') ? data.etf_flow_usd : g.raw_usd;
@@ -63,8 +62,15 @@ async function main() {
             <div class="title">Today: <span class="${rawFmt.cls}">${rawFmt.text}</span></div>
             <div class="title">7d Avg: <span class="${smaFmt.cls}">${smaFmt.text}</span></div>
           `;
-          // Debug if you ever need it:
-          // console.log('ETF flows raw/sma7', raw, sma, data.etf_flow_usd, data.etf_flow_sma7_usd, g);
+        } else if (k === 'stablecoins') {
+          const raw = (typeof data.stablecoin_delta_usd === 'number') ? data.stablecoin_delta_usd : g.raw_delta_usd;
+          const sma = (typeof data.stablecoin_delta_sma7_usd === 'number') ? data.stablecoin_delta_sma7_usd : g.sma7_delta_usd;
+          const rawFmt = fmtSignedUSD(raw);
+          const smaFmt = fmtSignedUSD(sma);
+          extra = `
+            <div class="title">Today: <span class="${rawFmt.cls}">${rawFmt.text}</span></div>
+            <div class="title">7d Avg: <span class="${smaFmt.cls}">${smaFmt.text}</span></div>
+          `;
         }
 
         const div = document.createElement('div');
