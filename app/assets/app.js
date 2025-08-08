@@ -7,6 +7,8 @@ async function main() {
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
     const data = await res.json();
+    const WINDOW_DAYS = data.smooth_days ?? 7;
+    const avgLabel = `Avg (${WINDOW_DAYS}d)`;
 
     // ===== Top card =====
     const asOfEl = document.getElementById('asOf');
