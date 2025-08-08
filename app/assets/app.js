@@ -8,7 +8,6 @@ async function main() {
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
 
-    // <-- defines `data`
     const data = await res.json();
 
     // ===== Top card =====
@@ -22,10 +21,10 @@ async function main() {
     if (bandEl) {
       const band = String(data.band ?? 'yellow');
       bandEl.textContent = band.toUpperCase();
-      bandEl.classList.add(band); // adds .green/.yellow/.red for styling
+      bandEl.classList.add(band); // .green/.yellow/.red
     }
 
-    // BTC price (new)
+    // BTC price
     const priceEl = document.getElementById('btcPrice');
     if (priceEl) {
       const p = data.btc_price_usd;
@@ -41,16 +40,36 @@ async function main() {
       term_structure: 'Term Structure & Leverage',
       onchain: 'On-chain Value'
     };
+
+    const fmtUSD = (v) => {
+      if (v === null || v === undefined || isNaN(v)) return '—';
+      const sign = v >= 0 ? '+' : '−';
+      return `${sign}$${Math.abs(Number(v)).toLocaleString()}`;
+    };
+
     if (gauges && data.drivers) {
       for (const k of Object.keys(map)) {
         const g = data.drivers[k];
         if (!g) continue;
+
+        // Extra lines only for ETF flows
+        let extra = '';
+        if (k === 'etf_flows') {
+          const raw = g.raw_usd ?? data.etf_flow_usd;           // today
+          const sma = g.sma7_usd ?? data.etf_flow_sma7_usd;     // 7d avg
+          extra = `
+            <div class="title">Today: ${fmtUSD(raw)}</div>
+            <div class="title">7d Avg: ${fmtUSD(sma)}</div>
+          `;
+        }
+
         const div = document.createElement('div');
         div.className = 'gauge';
         div.innerHTML = `
           <div class="title">${map[k]}</div>
           <div class="value">${(g.score * 100).toFixed(0)}<span style="font-size:12px;"> /100</span></div>
           <div class="title">Contribution: ${(g.contribution >= 0 ? '+' : '') + (g.contribution * 100).toFixed(0)} bp</div>
+          ${extra}
         `;
         gauges.appendChild(div);
       }
@@ -64,7 +83,6 @@ async function main() {
         if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
-        // Visual width scaled up a bit so tiny contributions still show
         const width = Math.min(100, Math.abs(g.contribution * 1000)); // demo scale
         const color = g.contribution >= 0 ? 'var(--orange)' : 'var(--green)';
         div.innerHTML = `
