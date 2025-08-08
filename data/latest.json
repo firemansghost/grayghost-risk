@@ -1,14 +1,14 @@
 {
   "as_of": "2025-08-08",
-  "as_of_utc": "2025-08-08T19:51:51Z",
-  "risk": 0.42,
+  "as_of_utc": "2025-08-08T19:58:14Z",
+  "risk": 0.41,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 116480.43,
+  "btc_price_usd": 116461.29,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 168057142.86,
-  "stablecoin_delta_usd": 572141744.07,
-  "stablecoin_delta_sma7_usd": 188454160.89,
+  "stablecoin_delta_usd": 572941003.77,
+  "stablecoin_delta_sma7_usd": 188568340.85,
   "drivers": {
     "etf_flows": {
       "score": 0.3,
@@ -89,12 +89,12 @@
     "stablecoins": {
       "score": 0.45,
       "contribution": -0.01,
-      "raw_delta_usd": 572141744.07,
-      "sma7_delta_usd": 188454160.89,
+      "raw_delta_usd": 572941003.77,
+      "sma7_delta_usd": 188568340.85,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": 572141744.07
+          "usd": 572941003.77
         },
         {
           "date": "08 Aug 2025",
@@ -133,8 +133,8 @@
       "source": "Binance/OKX/BitMEX (fallback)"
     },
     "onchain": {
-      "score": 0.47,
-      "contribution": 0.01,
+      "score": 0.64,
+      "contribution": 0.11,
       "raw": null
     }
   }
