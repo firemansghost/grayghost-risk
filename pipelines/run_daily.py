@@ -8,7 +8,7 @@ HIST = DATA / "history"; HIST.mkdir(parents=True, exist_ok=True)
 as_of = datetime.date.today().isoformat()
 latest_path = DATA / "latest.json"
 
-# ----- tiny utils -----
+# ----- utils -----
 def clamp(x, lo=0.0, hi=1.0): return max(lo, min(hi, x))
 
 def http_get(url, timeout=20):
@@ -23,7 +23,7 @@ def sigmoid(x):
     try: return 1.0 / (1.0 + math.exp(-x))
     except OverflowError: return 0.0 if x < 0 else 1.0
 
-# ----- BTC price (Coinbase) -----
+# ----- BTC price -----
 def fetch_btc_price_usd():
     try:
         j = http_json("https://api.coinbase.com/v2/prices/BTC-USD/spot", timeout=10)
@@ -99,13 +99,13 @@ def combine_stablecoin_issuance(days=8):
         trail.append({"date": d, "usd": round(v,2)})
     return (round(today,2) if today is not None else None, sma7, trail)
 
-# ----- FRED helpers (Net Liquidity) -----
+# ----- FRED (Net Liquidity) -----
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "").strip()
 
-def fetch_fred_series(series_id, days=120):
+def fetch_fred_series(series_id, days=180):
     if not FRED_API_KEY:
         print("[run_daily] INFO no FRED_API_KEY, skipping Net Liquidity", file=sys.stderr)
-        return []  # no key: skip cleanly
+        return []
     start = (datetime.date.today() - datetime.timedelta(days=days+5)).isoformat()
     url = ("https://api.stlouisfed.org/fred/series/observations"
            f"?series_id={series_id}&api_key={FRED_API_KEY}&file_type=json&observation_start={start}")
@@ -117,71 +117,46 @@ def fetch_fred_series(series_id, days=120):
             if not d or v in (None, ".", ""): continue
             try: out.append((datetime.date.fromisoformat(d), float(v)))
             except: continue
-        return out  # list of (date, value)
+        return out
     except Exception as e:
         print(f"[run_daily] WARN FRED {series_id} failed: {e}", file=sys.stderr)
         return []
 
-def forward_fill(daily_dates, pairs):
-    """pairs: list[(date, value)] sparse; return list aligned to daily_dates with last-known-value fill."""
-    mp = {d:v for d,v in pairs}
-    filled = []
-    last = None
-    for d in daily_dates:
-        if d in mp: last = mp[d]
-        filled.append(last)
-    return filled
-
 def scale_series(series_id, pairs):
-    # pairs: list[(date, value)] using series' native units
-    if series_id in ("WALCL", "WTREGEN"):   # millions of USD
+    if series_id in ("WALCL", "WTREGEN"):   # millions USD
         factor = 1_000_000.0
-    elif series_id == "RRPONTSYD":          # billions of USD
+    elif series_id == "RRPONTSYD":          # billions USD
         factor = 1_000_000_000.0
     else:
         factor = 1.0
-    return [(d, v * factor) for (d, v) in pairs]
+    return [(d, v*factor) for d, v in pairs]
 
 def compute_net_liquidity():
-    """Return dict with level, deltas, and trailing for UI; or None if no key/data."""
-    walcl_raw = fetch_fred_series("WALCL", days=180)      # millions
-    tga_raw   = fetch_fred_series("WTREGEN", days=180)    # millions
-    rrp_raw   = fetch_fred_series("RRPONTSYD", days=180)  # billions
-    if not walcl_raw or not tga_raw or not rrp_raw:
-        return None
+    walcl_raw = fetch_fred_series("WALCL", days=180)
+    tga_raw   = fetch_fred_series("WTREGEN", days=180)
+    rrp_raw   = fetch_fred_series("RRPONTSYD", days=180)
+    if not walcl_raw or not tga_raw or not rrp_raw: return None
 
-    # scale to USD
     walcl = scale_series("WALCL", walcl_raw)
     tga   = scale_series("WTREGEN", tga_raw)
     rrp   = scale_series("RRPONTSYD", rrp_raw)
 
-    # build daily date index
     start = max(min(walcl[0][0], tga[0][0], rrp[0][0]), datetime.date.today() - datetime.timedelta(days=120))
-    dates = [start + datetime.timedelta(days=i) for i in range((datetime.date.today() - start).days + 1)]
+    dates = [start + datetime.timedelta(days=i) for i in range((datetime.date.today()-start).days+1)]
 
-    def forward_fill(daily_dates, pairs):
-        mp = {d: v for d, v in pairs}
-        out, last = [], None
-        for d in daily_dates:
+    def ffill(pairs):
+        mp = {d:v for d,v in pairs}; out=[]; last=None
+        for d in dates:
             if d in mp: last = mp[d]
             out.append(last)
         return out
 
-    f_w = forward_fill(dates, walcl)
-    f_t = forward_fill(dates, tga)
-    f_r = forward_fill(dates, rrp)
+    f_w, f_t, f_r = ffill(walcl), ffill(tga), ffill(rrp)
+    net = [None if (f_w[i] is None or f_t[i] is None or f_r[i] is None) else f_w[i]-f_t[i]-f_r[i] for i in range(len(dates))]
 
-    net = []
-    for i in range(len(dates)):
-        if f_w[i] is None or f_t[i] is None or f_r[i] is None:
-            net.append(None)
-        else:
-            net.append(f_w[i] - f_t[i] - f_r[i])
-
-    first = next((i for i, x in enumerate(net) if x is not None), None)
-    if first is None:
-        return None
-    dates = dates[first:]; net = net[first:]
+    first = next((i for i,x in enumerate(net) if x is not None), None)
+    if first is None: return None
+    dates, net = dates[first:], net[first:]
 
     level = net[-1]
     delta1d = level - net[-2] if len(net) >= 2 else 0.0
@@ -191,11 +166,9 @@ def compute_net_liquidity():
     trailing = []
     for i in range(1, min(8, len(net))):
         d = dates[-i].strftime("%d %b %Y")
-        v = net[-i] - net[-i-1]
-        trailing.append({"date": d, "usd": round(v, 2)})
+        trailing.append({"date": d, "usd": round(net[-i]-net[-i-1], 2)})
 
-    # rising liquidity lowers risk; ~$100B scale
-    score = clamp(sigmoid(-sma7 / 100_000_000_000.0), 0.0, 1.0)
+    score = clamp(sigmoid(-sma7 / 100_000_000_000.0), 0.0, 1.0)   # more liquidity → lower risk
     contrib = round((score - 0.5) * 0.2, 2)
 
     return {
@@ -205,10 +178,79 @@ def compute_net_liquidity():
         "delta1d_usd": round(delta1d, 2),
         "sma7_delta_usd": round(sma7, 2),
         "trailing": trailing,
-        "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD corrected)"
+        "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD)"
     }
 
-# ----- base risk (placeholder until full model) -----
+# ----- Term Structure & Leverage (Binance) -----
+def fetch_binance_funding_7d_annual_pct():
+    """Return 7d avg funding per 8h (decimal) and annualized percent."""
+    try:
+        j = http_json("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000", timeout=20)
+        # take last 7 days ≈ 21 entries (3 per day)
+        rates = [float(x["fundingRate"]) for x in j[-21:]] if j else []
+        if not rates: return None, None
+        avg_8h = sum(rates)/len(rates)                         # decimal per 8h (e.g., 0.0001 = 0.01%)
+        annual_pct = avg_8h * 3 * 365 * 100.0                  # percent per year
+        return avg_8h*100.0, annual_pct                        # return (% per 8h, % annualized)
+    except Exception as e:
+        print(f"[run_daily] WARN funding fetch failed: {e}", file=sys.stderr)
+        return None, None
+
+def fetch_binance_premium_now_and_7d_pct():
+    """Return current premium % and 7d avg premium % (perp mark vs index)."""
+    try:
+        now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
+        mark = float(now["markPrice"]); index = float(now["indexPrice"])
+        now_pct = (mark - index) / index * 100.0
+    except Exception as e:
+        print(f"[run_daily] WARN premium now fetch failed: {e}", file=sys.stderr)
+        now_pct = None
+
+    avg_pct = None
+    try:
+        # 168 hourly candles ≈ 7 days
+        arr = http_json("https://fapi.binance.com/fapi/v1/premiumIndexKlines?symbol=BTCUSDT&interval=1h&limit=168", timeout=20)
+        closes = [float(x[4]) for x in arr]  # close column is premium ratio
+        if closes:
+            avg_pct = sum(closes)/len(closes) * 100.0
+    except Exception as e:
+        print(f"[run_daily] WARN premium klines fetch failed: {e}", file=sys.stderr)
+
+    return now_pct, avg_pct
+
+def compute_term_structure_driver():
+    fund_8h_pct, fund_ann_pct = fetch_binance_funding_7d_annual_pct()
+    prem_now_pct, prem_7d_pct = fetch_binance_premium_now_and_7d_pct()
+
+    # scoring: higher funding/premium => higher risk
+    parts = []
+    if fund_ann_pct is not None:
+        parts.append(sigmoid((fund_ann_pct - 10.0) / 10.0))    # 10% ann ≈ neutral
+    if prem_7d_pct is not None:
+        parts.append(sigmoid((prem_7d_pct - 0.00) / 0.20))     # 0.2% premium → riskier
+    if not parts:
+        return {
+            "score": round(random.uniform(0.3,0.7),2),
+            "contribution": round(random.uniform(-0.08,0.12),2),
+            "funding_ann_pct": None, "funding_8h_pct": None,
+            "perp_premium_now_pct": None, "perp_premium_7d_pct": None,
+            "source": "Binance futures (public)"
+        }
+
+    score = clamp(sum(parts)/len(parts), 0.0, 1.0)
+    contrib = round((score - 0.5) * 0.2, 2)
+
+    return {
+        "score": round(score, 2),
+        "contribution": contrib,
+        "funding_ann_pct": None if fund_ann_pct is None else round(fund_ann_pct, 2),
+        "funding_8h_pct": None if fund_8h_pct is None else round(fund_8h_pct, 4),
+        "perp_premium_now_pct": None if prem_now_pct is None else round(prem_now_pct, 3),
+        "perp_premium_7d_pct": None if prem_7d_pct is None else round(prem_7d_pct, 3),
+        "source": "Binance futures (public)"
+    }
+
+# ===== base risk placeholder (until we wire the full composite) =====
 prev_risk = 0.35
 if latest_path.exists():
     try: prev_risk = float(json.loads(latest_path.read_text()).get("risk", 0.35))
@@ -217,7 +259,7 @@ risk = clamp(prev_risk + random.uniform(-0.03, 0.03))
 band = "green" if risk < 0.25 else ("red" if risk > 0.60 else "yellow")
 regime = "liquidity_on" if random.random() > 0.4 else "liquidity_off"
 
-# ----- real ETF flows -----
+# ----- compute drivers -----
 trail = fetch_etf_trailing(n=7)
 etf_usd = trail[0][1] if trail else None
 etf_date = trail[0][0] if trail else None
@@ -226,16 +268,14 @@ etf_base = sma7_etf if sma7_etf is not None else (etf_usd or 0.0)
 etf_score = clamp(sigmoid(-etf_base / 200_000_000.0), 0.0, 1.0)
 etf_contrib = round((etf_score - 0.5) * 0.2, 2)
 
-# ----- real Stablecoins -----
 sc_today, sc_sma7, sc_trailing = combine_stablecoin_issuance(days=8)
 sc_base = sc_sma7 if sc_sma7 is not None else (sc_today or 0.0)
 sc_score = clamp(sigmoid(-sc_base / 1_000_000_000.0), 0.0, 1.0)
 sc_contrib = round((sc_score - 0.5) * 0.2, 2)
 
-# ----- real Net Liquidity (if key present) -----
 netliq = compute_net_liquidity()
+term = compute_term_structure_driver()
 
-# ----- assemble drivers -----
 drivers = {
     "etf_flows": {
         "score": round(etf_score, 2),
@@ -260,18 +300,17 @@ drivers = {
         "trailing": sc_trailing,
         "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
-    "term_structure": {"score": round(random.uniform(0.2,0.8),2), "contribution": round(random.uniform(-0.08,0.12),2), "raw_basis_pct": None},
-    "onchain":        {"score": round(random.uniform(0.2,0.8),2), "contribution": round(random.uniform(-0.08,0.12),2), "raw": None}
+    "term_structure": term,
+    "onchain": {"score": round(random.uniform(0.2,0.8),2), "contribution": round(random.uniform(-0.08,0.12),2), "raw": None}
 }
 
-# ----- BTC price -----
+# ----- BTC price & write -----
 prev_doc = {}
 if latest_path.exists():
     try: prev_doc = json.loads(latest_path.read_text())
     except Exception: pass
 btc_price = fetch_btc_price_usd() or prev_doc.get("btc_price_usd")
 
-# ----- final doc -----
 doc = {
     "as_of": as_of,
     "risk": round(risk, 2),
@@ -290,4 +329,5 @@ latest_path.write_text(json.dumps(doc, indent=2))
 
 print(f"[run_daily] OK risk={risk:.2f} band={band} btc={btc_price} "
       f"etf_usd={etf_usd} etf_sma7={sma7_etf} sc_today={sc_today} sc_sma7={sc_sma7} "
-      f"netliq_level={netliq.get('level_usd') if netliq else None}")
+      f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
+      f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')}")
