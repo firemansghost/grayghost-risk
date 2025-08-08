@@ -1,6 +1,27 @@
 # pipelines/run_daily.py
 import json, random, datetime, pathlib, urllib.request, urllib.error, sys, re, math, os
 
+# ====== CONFIG ======
+WEEKLY_MODE   = True          # A) daily runs, slower-moving risk
+SMOOTH_DAYS   = 21 if WEEKLY_MODE else 7
+EMA_KEEP      = 0.85 if WEEKLY_MODE else 0.60    # risk = KEEP*prev + (1-KEEP)*instant
+# Driver weights (sum ~1). In weekly mode we downweight Term Structure a bit.
+WEIGHTS_WEEKLY = {
+    "etf_flows":     0.22,
+    "net_liquidity": 0.30,
+    "stablecoins":   0.22,
+    "term_structure":0.12,
+    "onchain":       0.14,
+}
+WEIGHTS_DAILY = {
+    "etf_flows":     0.24,
+    "net_liquidity": 0.26,
+    "stablecoins":   0.22,
+    "term_structure":0.16,
+    "onchain":       0.12,
+}
+WEIGHTS = WEIGHTS_WEEKLY if WEEKLY_MODE else WEIGHTS_DAILY
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"; DATA.mkdir(parents=True, exist_ok=True)
 HIST = DATA / "history"; HIST.mkdir(parents=True, exist_ok=True)
@@ -9,7 +30,7 @@ as_of = datetime.date.today().isoformat()
 as_of_utc = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 latest_path = DATA / "latest.json"
 
-# ---------------- utils ----------------
+# ----- utils -----
 def clamp(x, lo=0.0, hi=1.0): return max(lo, min(hi, x))
 
 def http_get(url, timeout=20, headers=None):
@@ -26,7 +47,7 @@ def sigmoid(x):
     try: return 1.0 / (1.0 + math.exp(-x))
     except OverflowError: return 0.0 if x < 0 else 1.0
 
-# --------------- BTC price ---------------
+# ----- BTC price -----
 def fetch_btc_price_usd():
     try:
         j = http_json("https://api.coinbase.com/v2/prices/BTC-USD/spot", timeout=10)
@@ -35,7 +56,7 @@ def fetch_btc_price_usd():
         print(f"[run_daily] WARN price fetch failed: {e}", file=sys.stderr)
         return None
 
-# --------------- ETF flows (Farside) ---------------
+# ----- ETF flows (Farside) -----
 def parse_number_token(tok: str):
     tok = tok.strip().replace(",", "")
     if tok in {"-", "–", "—", ""}: return None
@@ -68,8 +89,8 @@ def fetch_etf_trailing(n=7):
         print(f"[run_daily] WARN fetch_etf_trailing failed: {e}", file=sys.stderr)
         return []
 
-# --------------- Stablecoin issuance (CoinGecko) ---------------
-def fetch_stablecoin_deltas(coin_id, days=8):
+# ----- Stablecoin issuance (CoinGecko) -----
+def fetch_stablecoin_caps(coin_id, days=8):
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
     try:
         caps = http_json(url, timeout=20).get("market_caps", [])
@@ -78,9 +99,11 @@ def fetch_stablecoin_deltas(coin_id, days=8):
         print(f"[run_daily] WARN CG fetch {coin_id} failed: {e}", file=sys.stderr)
         return []
 
-def combine_stablecoin_issuance(days=8):
-    teth = fetch_stablecoin_deltas("tether", days)
-    usdc = fetch_stablecoin_deltas("usd-coin", days)
+def combine_stablecoin_issuance(window=7):
+    # Need window+1 points to form 'window' deltas
+    need_days = window + 2
+    teth = fetch_stablecoin_caps("tether", need_days)
+    usdc = fetch_stablecoin_caps("usd-coin", need_days)
     if not teth or not usdc: return None, None, []
     L = min(len(teth), len(usdc))
     total = []
@@ -93,16 +116,17 @@ def combine_stablecoin_issuance(days=8):
         ts, cap = total[i]
         prev = total[i-1][1]
         deltas.append((ts, cap - prev))
-    last7 = deltas[-7:]
-    today = last7[-1][1] if last7 else None
-    sma7 = round(sum(v for _, v in last7)/len(last7), 2) if last7 else None
+    # last 'window' deltas
+    lastW = deltas[-window:]
+    today = lastW[-1][1] if lastW else None
+    smaW = round(sum(v for _, v in lastW)/len(lastW), 2) if lastW else None
     trail = []
-    for ts, v in reversed(last7):  # most recent first
+    for ts, v in reversed(lastW):  # most recent first
         d = datetime.datetime.utcfromtimestamp(ts/1000).strftime("%d %b %Y")
         trail.append({"date": d, "usd": round(v,2)})
-    return (round(today,2) if today is not None else None, sma7, trail)
+    return (round(today,2) if today is not None else None, smaW, trail)
 
-# --------------- FRED (Net Liquidity) ---------------
+# ----- FRED (Net Liquidity) -----
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "").strip()
 
 def fetch_fred_series(series_id, days=180):
@@ -126,15 +150,15 @@ def fetch_fred_series(series_id, days=180):
         return []
 
 def scale_series(series_id, pairs):
-    if series_id in ("WALCL", "WTREGEN"):   # millions USD
+    if series_id in ("WALCL", "WTREGEN"):   # millions USD → dollars
         factor = 1_000_000.0
-    elif series_id == "RRPONTSYD":          # billions USD
+    elif series_id == "RRPONTSYD":          # billions USD → dollars
         factor = 1_000_000_000.0
     else:
         factor = 1.0
     return [(d, v*factor) for d, v in pairs]
 
-def compute_net_liquidity():
+def compute_net_liquidity(window=7):
     walcl_raw = fetch_fred_series("WALCL", days=180)
     tga_raw   = fetch_fred_series("WTREGEN", days=180)
     rrp_raw   = fetch_fred_series("RRPONTSYD", days=180)
@@ -163,15 +187,18 @@ def compute_net_liquidity():
 
     level = net[-1]
     delta1d = level - net[-2] if len(net) >= 2 else 0.0
-    delta7d = level - net[-7] if len(net) >= 7 else delta1d
-    sma7 = delta7d / 7.0
+    # window-day average daily change
+    deltaWd = level - net[-window] if len(net) > window else delta1d
+    smaW = deltaWd / float(window)
 
     trailing = []
-    for i in range(1, min(8, len(net))):
+    for i in range(1, min(window+1, len(net))):
         d = dates[-i].strftime("%d %b %Y")
         trailing.append({"date": d, "usd": round(net[-i]-net[-i-1], 2)})
 
-    score = clamp(sigmoid(-sma7 / 100_000_000_000.0), 0.0, 1.0)   # more liquidity → lower risk
+    # more liquidity → lower risk
+    scale = 100_000_000_000.0 if window >= 21 else 100_000_000_000.0
+    score = clamp(sigmoid(-smaW / scale), 0.0, 1.0)
     contrib = round((score - 0.5) * 0.2, 2)
 
     return {
@@ -179,12 +206,12 @@ def compute_net_liquidity():
         "contribution": contrib,
         "level_usd": round(level, 2),
         "delta1d_usd": round(delta1d, 2),
-        "sma7_delta_usd": round(sma7, 2),
+        "sma7_delta_usd": round(smaW, 2),   # keep field name for UI; it’s the window avg
         "trailing": trailing,
         "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD)"
     }
 
-# --------------- Term Structure & Leverage ---------------
+# ----- Term Structure & Leverage (multi-exchange) -----
 def fetch_binance_funding_7d_annual_pct():
     try:
         j = http_json("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000", timeout=20)
@@ -285,7 +312,6 @@ def fetch_deribit_premium_now_pct():
     return None
 
 def fetch_proxy_premium_now_pct():
-    """Proxy: Binance futures last price vs Coinbase spot."""
     try:
         fut = float(http_json("https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT", timeout=15).get("price"))
         spot = fetch_btc_price_usd()
@@ -297,20 +323,15 @@ def fetch_proxy_premium_now_pct():
 
 def get_premium_now_pct_multi():
     # Try Binance now → OKX → Bybit → Deribit → proxy
-    for fn in (lambda: http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20),
-               fetch_okx_premium_now_pct, fetch_bybit_premium_now_pct, fetch_deribit_premium_now_pct, fetch_proxy_premium_now_pct):
-        try:
-            if callable(fn):
-                if fn.__name__ == "<lambda>":
-                    now = fn()
-                    mark = float(now.get("markPrice")); index = float(now.get("indexPrice"))
-                    if index:
-                        return (mark - index) / index * 100.0
-                else:
-                    v = fn()
-                    if v is not None: return v
-        except Exception as e:
-            print(f"[run_daily] WARN premium now step failed: {e}", file=sys.stderr)
+    try:
+        now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
+        mark = float(now.get("markPrice")); index = float(now.get("indexPrice"))
+        if index: return (mark - index) / index * 100.0
+    except Exception as e:
+        print(f"[run_daily] WARN premium now binance failed: {e}", file=sys.stderr)
+    for fn in (fetch_okx_premium_now_pct, fetch_bybit_premium_now_pct, fetch_deribit_premium_now_pct, fetch_proxy_premium_now_pct):
+        v = fn()
+        if v is not None: return v
     return None
 
 def fetch_binance_premium_7d_avg_pct():
@@ -340,9 +361,9 @@ def compute_term_structure_driver():
 
     parts = []
     if fann is not None:
-        parts.append(sigmoid((fann - 10.0) / 10.0))     # ~10% ann feels neutral
+        parts.append(sigmoid((fann - 10.0) / 10.0))     # 10% ann ~ neutral
     if prem_7d is not None:
-        parts.append(sigmoid((prem_7d - 0.00) / 0.20))  # +0.20% premium feels riskier
+        parts.append(sigmoid((prem_7d - 0.00) / 0.20))  # +0.20% prem ~ riskier
     if not parts:
         return {
             "score": round(random.uniform(0.3,0.7),2),
@@ -353,7 +374,7 @@ def compute_term_structure_driver():
         }
 
     score = clamp(sum(parts)/len(parts), 0.0, 1.0)
-    contrib = round((score - 0.5) * 0.2, 2)
+    contrib = round((score - 0.5) * 0.18 if WEEKLY_MODE else (score - 0.5) * 0.2, 2)
 
     return {
         "score": round(score, 2),
@@ -365,38 +386,30 @@ def compute_term_structure_driver():
         "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     }
 
-# ============= base risk placeholder =============
-prev_risk = 0.35
-if latest_path.exists():
-    try: prev_risk = float(json.loads(latest_path.read_text()).get("risk", 0.35))
-    except Exception: pass
-risk = clamp(prev_risk + random.uniform(-0.03, 0.03))
-band = "green" if risk < 0.25 else ("red" if risk > 0.60 else "yellow")
-regime = "liquidity_on" if random.random() > 0.4 else "liquidity_off"
-
-# --------------- compute drivers ---------------
-trail = fetch_etf_trailing(n=7)
-etf_usd = trail[0][1] if trail else None
+# ----- compute drivers -----
+trail = fetch_etf_trailing(n=SMOOTH_DAYS)
+etf_usd  = trail[0][1] if trail else None
 etf_date = trail[0][0] if trail else None
-sma7_etf = round(sum(v for _, v in trail)/len(trail), 2) if trail else None
-etf_base = sma7_etf if sma7_etf is not None else (etf_usd or 0.0)
+sma_etf  = round(sum(v for _, v in trail)/len(trail), 2) if trail else None
+etf_base = sma_etf if sma_etf is not None else (etf_usd or 0.0)
 etf_score = clamp(sigmoid(-etf_base / 200_000_000.0), 0.0, 1.0)
 etf_contrib = round((etf_score - 0.5) * 0.2, 2)
 
-sc_today, sc_sma7, sc_trailing = combine_stablecoin_issuance(days=8)
-sc_base = sc_sma7 if sc_sma7 is not None else (sc_today or 0.0)
+sc_today, sc_smaW, sc_trailing = combine_stablecoin_issuance(window=SMOOTH_DAYS)
+sc_base = sc_smaW if sc_smaW is not None else (sc_today or 0.0)
 sc_score = clamp(sigmoid(-sc_base / 1_000_000_000.0), 0.0, 1.0)
 sc_contrib = round((sc_score - 0.5) * 0.2, 2)
 
-netliq = compute_net_liquidity()
-term = compute_term_structure_driver()
+netliq = compute_net_liquidity(window=SMOOTH_DAYS)
+term   = compute_term_structure_driver()
+onchain_score = round(random.uniform(0.2,0.8),2)   # placeholder
 
 drivers = {
     "etf_flows": {
         "score": round(etf_score, 2),
         "contribution": etf_contrib,
         "raw_usd": etf_usd,
-        "sma7_usd": sma7_etf,
+        "sma7_usd": sma_etf,            # UI label still says "Avg"; value is window avg
         "asof": etf_date,
         "trailing": [{"date": d, "usd": v} for d, v in trail],
         "source": "Farside Bitcoin ETF Flow – All Data"
@@ -411,15 +424,41 @@ drivers = {
         "score": round(sc_score, 2),
         "contribution": sc_contrib,
         "raw_delta_usd": sc_today,
-        "sma7_delta_usd": sc_sma7,
+        "sma7_delta_usd": sc_smaW,
         "trailing": sc_trailing,
         "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": term,
-    "onchain": {"score": round(random.uniform(0.2,0.8),2), "contribution": round(random.uniform(-0.08,0.12),2), "raw": None}
+    "onchain": {"score": onchain_score, "contribution": round((onchain_score-0.5)*0.2,2), "raw": None}
 }
 
-# --------------- write output ---------------
+# ----- risk: weighted blend + EMA smoothing -----
+prev_risk = None
+if latest_path.exists():
+    try:
+        prev_risk = float(json.loads(latest_path.read_text()).get("risk", None))
+    except Exception:
+        pass
+
+# instant (unsmoothed) risk from driver scores
+def get_score(key): 
+    d = drivers.get(key, {})
+    return float(d.get("score", 0.5))
+
+inst = (
+    WEIGHTS["etf_flows"]     * get_score("etf_flows") +
+    WEIGHTS["net_liquidity"] * get_score("net_liquidity") +
+    WEIGHTS["stablecoins"]   * get_score("stablecoins") +
+    WEIGHTS["term_structure"]* get_score("term_structure") +
+    WEIGHTS["onchain"]       * get_score("onchain")
+)
+risk = inst if prev_risk is None else (EMA_KEEP * prev_risk + (1.0 - EMA_KEEP) * inst)
+risk = clamp(risk)
+
+band = "green" if risk < 0.25 else ("red" if risk > 0.60 else "yellow")
+regime = "liquidity_on" if get_score("net_liquidity") < 0.5 else "liquidity_off"
+
+# ----- BTC price & final write -----
 prev_doc = {}
 if latest_path.exists():
     try: prev_doc = json.loads(latest_path.read_text())
@@ -430,22 +469,29 @@ btc_price = fetch_btc_price_usd() or prev_doc.get("btc_price_usd")
 doc = {
     "as_of": as_of,
     "as_of_utc": as_of_utc,
+    "smooth_days": SMOOTH_DAYS,          # <- expose window to the UI
     "risk": round(risk, 2),
     "band": band,
     "regime": regime,
     "btc_price_usd": btc_price,
+
+    # convenience root fields for UI
     "etf_flow_usd": etf_usd,
-    "etf_flow_sma7_usd": sma7_etf,
+    "etf_flow_sma7_usd": sma_etf,            # value = window avg
     "stablecoin_delta_usd": sc_today,
-    "stablecoin_delta_sma7_usd": sc_sma7,
+    "stablecoin_delta_sma7_usd": sc_smaW,    # value = window avg
+
+    # full drivers
     "drivers": drivers
 }
 
 latest_path.write_text(json.dumps(doc, indent=2))
 (HIST / f"{as_of}.json").write_text(json.dumps(doc, indent=2))
 
-print(f"[run_daily] OK risk={risk:.2f} band={band} btc={btc_price} "
-      f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
-      f"term_prem_now={drivers['term_structure'].get('perp_premium_now_pct')} "
-      f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')} "
-      f"asof_utc={as_of_utc}")
+print(
+    f"[run_daily] OK inst={inst:.3f} risk={risk:.3f} band={band} "
+    f"w=({WEIGHTS}) smooth_days={SMOOTH_DAYS} ema_keep={EMA_KEEP} "
+    f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
+    f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')} "
+    f"asof_utc={as_of_utc}"
+)
