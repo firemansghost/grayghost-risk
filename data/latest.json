@@ -1,20 +1,21 @@
 {
   "as_of": "2025-08-08",
-  "as_of_utc": "2025-08-08T20:46:33Z",
-  "risk": 0.42,
+  "as_of_utc": "2025-08-08T20:55:31Z",
+  "smooth_days": 21,
+  "risk": 0.43,
   "band": "yellow",
-  "regime": "liquidity_off",
-  "btc_price_usd": 116846.28,
+  "regime": "liquidity_on",
+  "btc_price_usd": 116845.88,
   "etf_flow_usd": 655300000.0,
-  "etf_flow_sma7_usd": 168057142.86,
-  "stablecoin_delta_usd": 655493605.93,
-  "stablecoin_delta_sma7_usd": 200361569.73,
+  "etf_flow_sma7_usd": 106228571.43,
+  "stablecoin_delta_usd": 662995460.42,
+  "stablecoin_delta_sma7_usd": 180724316.44,
   "drivers": {
     "etf_flows": {
-      "score": 0.3,
-      "contribution": -0.04,
+      "score": 0.37,
+      "contribution": -0.03,
       "raw_usd": 655300000.0,
-      "sma7_usd": 168057142.86,
+      "sma7_usd": 106228571.43,
       "asof": "11 Jan 2024",
       "trailing": [
         {
@@ -44,6 +45,62 @@
         {
           "date": "19 Jan 2024",
           "usd": 43600000.0
+        },
+        {
+          "date": "22 Jan 2024",
+          "usd": -87400000.0
+        },
+        {
+          "date": "23 Jan 2024",
+          "usd": -106100000.0
+        },
+        {
+          "date": "24 Jan 2024",
+          "usd": -158300000.0
+        },
+        {
+          "date": "25 Jan 2024",
+          "usd": -79800000.0
+        },
+        {
+          "date": "26 Jan 2024",
+          "usd": 14800000.0
+        },
+        {
+          "date": "29 Jan 2024",
+          "usd": 255100000.0
+        },
+        {
+          "date": "30 Jan 2024",
+          "usd": 247300000.0
+        },
+        {
+          "date": "31 Jan 2024",
+          "usd": 197600000.0
+        },
+        {
+          "date": "01 Feb 2024",
+          "usd": 38500000.0
+        },
+        {
+          "date": "02 Feb 2024",
+          "usd": 80000000.0
+        },
+        {
+          "date": "05 Feb 2024",
+          "usd": 68100000.0
+        },
+        {
+          "date": "06 Feb 2024",
+          "usd": 33600000.0
+        },
+        {
+          "date": "07 Feb 2024",
+          "usd": 146000000.0
+        },
+        {
+          "date": "08 Feb 2024",
+          "usd": 405000000.0
         }
       ],
       "source": "Farside Bitcoin ETF Flow \u2013 All Data"
@@ -53,7 +110,7 @@
       "contribution": -0.0,
       "level_usd": 6560118957000.0,
       "delta1d_usd": -2342000000.0,
-      "sma7_delta_usd": 2191066285.71,
+      "sma7_delta_usd": 4782866857.14,
       "trailing": [
         {
           "date": "08 Aug 2025",
@@ -82,6 +139,62 @@
         {
           "date": "02 Aug 2025",
           "usd": 0.0
+        },
+        {
+          "date": "01 Aug 2025",
+          "usd": 117019000000.0
+        },
+        {
+          "date": "31 Jul 2025",
+          "usd": -58964000000.0
+        },
+        {
+          "date": "30 Jul 2025",
+          "usd": 352669000.0
+        },
+        {
+          "date": "29 Jul 2025",
+          "usd": -555000000.0
+        },
+        {
+          "date": "28 Jul 2025",
+          "usd": -19954000000.0
+        },
+        {
+          "date": "27 Jul 2025",
+          "usd": 0.0
+        },
+        {
+          "date": "26 Jul 2025",
+          "usd": 0.0
+        },
+        {
+          "date": "25 Jul 2025",
+          "usd": -18323000000.0
+        },
+        {
+          "date": "24 Jul 2025",
+          "usd": 57446000000.0
+        },
+        {
+          "date": "23 Jul 2025",
+          "usd": 5157071000.0
+        },
+        {
+          "date": "22 Jul 2025",
+          "usd": 17292000000.0
+        },
+        {
+          "date": "21 Jul 2025",
+          "usd": -14368000000.0
+        },
+        {
+          "date": "20 Jul 2025",
+          "usd": 0.0
+        },
+        {
+          "date": "19 Jul 2025",
+          "usd": 0.0
         }
       ],
       "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD (USD)"
@@ -89,12 +202,12 @@
     "stablecoins": {
       "score": 0.45,
       "contribution": -0.01,
-      "raw_delta_usd": 655493605.93,
-      "sma7_delta_usd": 200361569.73,
+      "raw_delta_usd": 662995460.42,
+      "sma7_delta_usd": 180724316.44,
       "trailing": [
         {
           "date": "08 Aug 2025",
-          "usd": 655493605.93
+          "usd": 662995460.42
         },
         {
           "date": "08 Aug 2025",
@@ -119,6 +232,62 @@
         {
           "date": "03 Aug 2025",
           "usd": -29719911.98
+        },
+        {
+          "date": "02 Aug 2025",
+          "usd": 326956749.9
+        },
+        {
+          "date": "01 Aug 2025",
+          "usd": 4915982.04
+        },
+        {
+          "date": "31 Jul 2025",
+          "usd": 319474704.26
+        },
+        {
+          "date": "30 Jul 2025",
+          "usd": -43658032.37
+        },
+        {
+          "date": "29 Jul 2025",
+          "usd": -426381130.79
+        },
+        {
+          "date": "28 Jul 2025",
+          "usd": 290601837.64
+        },
+        {
+          "date": "27 Jul 2025",
+          "usd": 530857749.23
+        },
+        {
+          "date": "26 Jul 2025",
+          "usd": -625188703.38
+        },
+        {
+          "date": "25 Jul 2025",
+          "usd": 1036103458.89
+        },
+        {
+          "date": "24 Jul 2025",
+          "usd": -88340278.8
+        },
+        {
+          "date": "23 Jul 2025",
+          "usd": 280259942.17
+        },
+        {
+          "date": "22 Jul 2025",
+          "usd": 347257857.37
+        },
+        {
+          "date": "21 Jul 2025",
+          "usd": -93209032.42
+        },
+        {
+          "date": "20 Jul 2025",
+          "usd": 525526698.93
         }
       ],
       "source": "CoinGecko USDT + USDC market_caps (daily)"
@@ -128,13 +297,13 @@
       "contribution": -0.01,
       "funding_ann_pct": 6.53,
       "funding_8h_pct": 0.006,
-      "perp_premium_now_pct": 0.016,
-      "perp_premium_7d_pct": 0.016,
+      "perp_premium_now_pct": 0.018,
+      "perp_premium_7d_pct": 0.018,
       "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     },
     "onchain": {
-      "score": 0.71,
-      "contribution": -0.06,
+      "score": 0.74,
+      "contribution": 0.05,
       "raw": null
     }
   }
