@@ -5,7 +5,7 @@ import json, random, datetime, pathlib, urllib.request, urllib.error, sys, re, m
 WEEKLY_MODE   = True          # A) daily runs, slower-moving risk
 SMOOTH_DAYS   = 21 if WEEKLY_MODE else 7
 EMA_KEEP      = 0.85 if WEEKLY_MODE else 0.60    # risk = KEEP*prev + (1-KEEP)*instant
-# Driver weights (sum ~1). In weekly mode we downweight Term Structure a bit.
+# Driver weights (sum ~1)
 WEIGHTS_WEEKLY = {
     "etf_flows":     0.22,
     "net_liquidity": 0.30,
@@ -100,7 +100,6 @@ def fetch_stablecoin_caps(coin_id, days=8):
         return []
 
 def combine_stablecoin_issuance(window=7):
-    # Need window+1 points to form 'window' deltas
     need_days = window + 2
     teth = fetch_stablecoin_caps("tether", need_days)
     usdc = fetch_stablecoin_caps("usd-coin", need_days)
@@ -116,7 +115,6 @@ def combine_stablecoin_issuance(window=7):
         ts, cap = total[i]
         prev = total[i-1][1]
         deltas.append((ts, cap - prev))
-    # last 'window' deltas
     lastW = deltas[-window:]
     today = lastW[-1][1] if lastW else None
     smaW = round(sum(v for _, v in lastW)/len(lastW), 2) if lastW else None
@@ -187,7 +185,6 @@ def compute_net_liquidity(window=7):
 
     level = net[-1]
     delta1d = level - net[-2] if len(net) >= 2 else 0.0
-    # window-day average daily change
     deltaWd = level - net[-window] if len(net) > window else delta1d
     smaW = deltaWd / float(window)
 
@@ -196,9 +193,8 @@ def compute_net_liquidity(window=7):
         d = dates[-i].strftime("%d %b %Y")
         trailing.append({"date": d, "usd": round(net[-i]-net[-i-1], 2)})
 
-    # more liquidity → lower risk
-    scale = 100_000_000_000.0 if window >= 21 else 100_000_000_000.0
-    score = clamp(sigmoid(-smaW / scale), 0.0, 1.0)
+    scale = 100_000_000_000.0
+    score = clamp(sigmoid(-smaW / scale), 0.0, 1.0)   # more liquidity → lower risk
     contrib = round((score - 0.5) * 0.2, 2)
 
     return {
@@ -206,12 +202,12 @@ def compute_net_liquidity(window=7):
         "contribution": contrib,
         "level_usd": round(level, 2),
         "delta1d_usd": round(delta1d, 2),
-        "sma7_delta_usd": round(smaW, 2),   # keep field name for UI; it’s the window avg
+        "sma7_delta_usd": round(smaW, 2),   # UI label says "Avg", window avg here
         "trailing": trailing,
         "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD)"
     }
 
-# ----- Term Structure & Leverage (multi-exchange) -----
+# ----- Term Structure & Leverage -----
 def fetch_binance_funding_7d_annual_pct():
     try:
         j = http_json("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000", timeout=20)
@@ -322,7 +318,6 @@ def fetch_proxy_premium_now_pct():
     return None
 
 def get_premium_now_pct_multi():
-    # Try Binance now → OKX → Bybit → Deribit → proxy
     try:
         now = http_json("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT", timeout=20)
         mark = float(now.get("markPrice")); index = float(now.get("indexPrice"))
@@ -346,14 +341,12 @@ def fetch_binance_premium_7d_avg_pct():
     return None
 
 def compute_term_structure_driver():
-    # funding: Binance → OKX → BitMEX
     f8, fann = fetch_binance_funding_7d_annual_pct()
     if fann is None:
         f8, fann = fetch_okx_funding_7d_annual_pct()
     if fann is None:
         f8, fann = fetch_bitmex_funding_7d_annual_pct()
 
-    # premium (now & 7d)
     prem_now = get_premium_now_pct_multi()
     prem_7d  = fetch_binance_premium_7d_avg_pct()
     if prem_7d is None:
@@ -363,7 +356,7 @@ def compute_term_structure_driver():
     if fann is not None:
         parts.append(sigmoid((fann - 10.0) / 10.0))     # 10% ann ~ neutral
     if prem_7d is not None:
-        parts.append(sigmoid((prem_7d - 0.00) / 0.20))  # +0.20% prem ~ riskier
+        parts.append(sigmoid((prem_7d - 0.00) / 0.20))  # +0.20% premium ~ riskier
     if not parts:
         return {
             "score": round(random.uniform(0.3,0.7),2),
@@ -374,7 +367,7 @@ def compute_term_structure_driver():
         }
 
     score = clamp(sum(parts)/len(parts), 0.0, 1.0)
-    contrib = round((score - 0.5) * 0.18 if WEEKLY_MODE else (score - 0.5) * 0.2, 2)
+    contrib = round((score - 0.5) * (0.18 if WEEKLY_MODE else 0.2), 2)
 
     return {
         "score": round(score, 2),
@@ -386,7 +379,82 @@ def compute_term_structure_driver():
         "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     }
 
-# ----- compute drivers -----
+# ----- On-chain (free: blockchain.com charts) -----
+def fetch_blockchain_chart(name: str, days: int = 200):
+    # names: 'n-unique-addresses', 'transaction-fees', etc.
+    url = f"https://api.blockchain.info/charts/{name}?timespan={days}days&format=json"
+    try:
+        j = http_json(url, timeout=20)
+        vals = j.get("values", [])
+        out = []
+        for it in vals:
+            ts = it.get("x"); y = it.get("y")
+            if ts is None or y is None: continue
+            d = datetime.datetime.utcfromtimestamp(int(ts)).date()
+            out.append((d, float(y)))
+        return out
+    except Exception as e:
+        print(f"[run_daily] WARN blockchain.com {name} failed: {e}", file=sys.stderr)
+        return []
+
+def compute_onchain_driver(btc_price_usd: float, window: int = SMOOTH_DAYS):
+    addrs = fetch_blockchain_chart("n-unique-addresses", 220)
+    fees  = fetch_blockchain_chart("transaction-fees", 220)   # BTC/day
+
+    if not addrs or not fees:
+        return {
+            "score": round(random.uniform(0.3,0.7),2),
+            "contribution": round(random.uniform(-0.08,0.12),2),
+            "trailing": [],
+            "source": "blockchain.com charts (fallback)"
+        }
+
+    # collapse to arrays (align lengths by date intersection)
+    ad_map = {d:v for d,v in addrs}
+    fe_map = {d:v for d,v in fees}
+    common_dates = sorted(set(ad_map.keys()) & set(fe_map.keys()))
+    if len(common_dates) < window + 10:
+        common_dates = sorted(ad_map.keys())
+
+    ad_vals = [ad_map[d] for d in common_dates]
+    fe_vals = [fe_map.get(d, fe_map[common_dates[-1]]) for d in common_dates]  # forward-fill fees if needed
+
+    # baselines and window avgs
+    base_len = min(180, len(ad_vals))
+    if base_len < window + 5:
+        base_len = len(ad_vals)
+
+    ad_base = sum(ad_vals[-base_len:]) / base_len
+    fe_base = sum(fe_vals[-base_len:]) / base_len
+    ad_avgW = sum(ad_vals[-window:]) / window
+    fe_avgW = sum(fe_vals[-window:]) / window
+
+    # deviations vs baseline (percent)
+    dev_ad = 0.0 if ad_base == 0 else (ad_avgW - ad_base) / ad_base
+    dev_fe = 0.0 if fe_base == 0 else (fe_avgW - fe_base) / fe_base
+
+    # blend: activity (0.6) + fees (0.4) → higher → lower risk
+    dev = 0.6*dev_ad + 0.4*dev_fe
+    score = clamp(sigmoid(-dev / 0.5), 0.0, 1.0)   # +50% dev → strong bullish (score down)
+    contrib = round((score - 0.5) * 0.2, 2)
+
+    # trailing: fees converted to USD-ish for sparkline (visual only)
+    bp = btc_price_usd or 0.0
+    trail = []
+    lastW_dates = common_dates[-window:]
+    for d in reversed(lastW_dates):  # most recent first (UI expects that)
+        fee_btc = fe_map.get(d, 0.0)
+        usd = round(fee_btc * bp, 2) if bp else round(fee_btc, 6)
+        trail.append({"date": d.strftime("%d %b %Y"), "usd": usd})
+
+    return {
+        "score": round(score, 2),
+        "contribution": contrib,
+        "trailing": trail,
+        "source": "blockchain.com charts (active addresses + tx fees)"
+    }
+
+# ===== compute drivers =====
 trail = fetch_etf_trailing(n=SMOOTH_DAYS)
 etf_usd  = trail[0][1] if trail else None
 etf_date = trail[0][0] if trail else None
@@ -402,14 +470,22 @@ sc_contrib = round((sc_score - 0.5) * 0.2, 2)
 
 netliq = compute_net_liquidity(window=SMOOTH_DAYS)
 term   = compute_term_structure_driver()
-onchain_score = round(random.uniform(0.2,0.8),2)   # placeholder
+
+# BTC price needed before on-chain trailing USD conversion
+prev_doc = {}
+if latest_path.exists():
+    try: prev_doc = json.loads(latest_path.read_text())
+    except Exception: pass
+btc_price = fetch_btc_price_usd() or prev_doc.get("btc_price_usd")
+
+onchain = compute_onchain_driver(btc_price, window=SMOOTH_DAYS)
 
 drivers = {
     "etf_flows": {
         "score": round(etf_score, 2),
         "contribution": etf_contrib,
         "raw_usd": etf_usd,
-        "sma7_usd": sma_etf,            # UI label still says "Avg"; value is window avg
+        "sma7_usd": sma_etf,            # window avg
         "asof": etf_date,
         "trailing": [{"date": d, "usd": v} for d, v in trail],
         "source": "Farside Bitcoin ETF Flow – All Data"
@@ -429,7 +505,7 @@ drivers = {
         "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": term,
-    "onchain": {"score": onchain_score, "contribution": round((onchain_score-0.5)*0.2,2), "raw": None}
+    "onchain": onchain
 }
 
 # ----- risk: weighted blend + EMA smoothing -----
@@ -440,8 +516,7 @@ if latest_path.exists():
     except Exception:
         pass
 
-# instant (unsmoothed) risk from driver scores
-def get_score(key): 
+def get_score(key):
     d = drivers.get(key, {})
     return float(d.get("score", 0.5))
 
@@ -458,18 +533,10 @@ risk = clamp(risk)
 band = "green" if risk < 0.25 else ("red" if risk > 0.60 else "yellow")
 regime = "liquidity_on" if get_score("net_liquidity") < 0.5 else "liquidity_off"
 
-# ----- BTC price & final write -----
-prev_doc = {}
-if latest_path.exists():
-    try: prev_doc = json.loads(latest_path.read_text())
-    except Exception: pass
-
-btc_price = fetch_btc_price_usd() or prev_doc.get("btc_price_usd")
-
 doc = {
     "as_of": as_of,
     "as_of_utc": as_of_utc,
-    "smooth_days": SMOOTH_DAYS,          # <- expose window to the UI
+    "smooth_days": SMOOTH_DAYS,
     "risk": round(risk, 2),
     "band": band,
     "regime": regime,
@@ -477,9 +544,9 @@ doc = {
 
     # convenience root fields for UI
     "etf_flow_usd": etf_usd,
-    "etf_flow_sma7_usd": sma_etf,            # value = window avg
+    "etf_flow_sma7_usd": sma_etf,               # window avg
     "stablecoin_delta_usd": sc_today,
-    "stablecoin_delta_sma7_usd": sc_smaW,    # value = window avg
+    "stablecoin_delta_sma7_usd": sc_smaW,       # window avg
 
     # full drivers
     "drivers": drivers
