@@ -202,7 +202,7 @@ def compute_net_liquidity(window=7):
         "contribution": contrib,
         "level_usd": round(level, 2),
         "delta1d_usd": round(delta1d, 2),
-        "sma7_delta_usd": round(smaW, 2),   # UI label says "Avg", window avg here
+        "sma7_delta_usd": round(smaW, 2),   # window avg
         "trailing": trailing,
         "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD)"
     }
@@ -379,9 +379,8 @@ def compute_term_structure_driver():
         "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     }
 
-# ----- On-chain (free: blockchain.com charts) -----
-def fetch_blockchain_chart(name: str, days: int = 200):
-    # names: 'n-unique-addresses', 'transaction-fees', etc.
+# ----- On-chain (free: blockchain.com + mempool.space) -----
+def fetch_blockchain_chart(name: str, days: int = 220):
     url = f"https://api.blockchain.info/charts/{name}?timespan={days}days&format=json"
     try:
         j = http_json(url, timeout=20)
@@ -397,9 +396,26 @@ def fetch_blockchain_chart(name: str, days: int = 200):
         print(f"[run_daily] WARN blockchain.com {name} failed: {e}", file=sys.stderr)
         return []
 
+def fetch_mempool_summary():
+    size_mb = None; fee_30m = None
+    try:
+        j = http_json("https://mempool.space/api/mempool", timeout=15)
+        vsize = float(j.get("vsize", 0.0))
+        size_mb = vsize / 1_000_000.0
+    except Exception as e:
+        print(f"[run_daily] WARN mempool size failed: {e}", file=sys.stderr)
+    try:
+        f = http_json("https://mempool.space/api/v1/fees/recommended", timeout=15)
+        fee_30m = float(f.get("halfHourFee", f.get("fastestFee", None)))
+    except Exception as e:
+        print(f"[run_daily] WARN fee rec failed: {e}", file=sys.stderr)
+    return size_mb, fee_30m
+
 def compute_onchain_driver(btc_price_usd: float, window: int = SMOOTH_DAYS):
     addrs = fetch_blockchain_chart("n-unique-addresses", 220)
     fees  = fetch_blockchain_chart("transaction-fees", 220)   # BTC/day
+    txs   = fetch_blockchain_chart("n-transactions", 220)
+    hrate = fetch_blockchain_chart("hash-rate", 220)
 
     if not addrs or not fees:
         return {
@@ -409,49 +425,75 @@ def compute_onchain_driver(btc_price_usd: float, window: int = SMOOTH_DAYS):
             "source": "blockchain.com charts (fallback)"
         }
 
-    # collapse to arrays (align lengths by date intersection)
+    # map to dict by date; intersect where possible
     ad_map = {d:v for d,v in addrs}
     fe_map = {d:v for d,v in fees}
-    common_dates = sorted(set(ad_map.keys()) & set(fe_map.keys()))
-    if len(common_dates) < window + 10:
-        common_dates = sorted(ad_map.keys())
+    tx_map = {d:v for d,v in txs} if txs else {}
+    hr_map = {d:v for d,v in hrate} if hrate else {}
+    common = sorted(set(ad_map.keys()) & set(fe_map.keys()))
+    if len(common) < window + 10:
+        common = sorted(ad_map.keys())
 
-    ad_vals = [ad_map[d] for d in common_dates]
-    fe_vals = [fe_map.get(d, fe_map[common_dates[-1]]) for d in common_dates]  # forward-fill fees if needed
+    ad_vals = [ad_map[d] for d in common]
+    fe_btc  = [fe_map.get(d, fe_map[common[-1]]) for d in common]
+    tx_vals = [tx_map.get(d, tx_map.get(common[-1], 0.0)) for d in common] if tx_map else [0.0]*len(common)
+    hr_vals = [hr_map.get(d, hr_map.get(common[-1], 0.0)) for d in common] if hr_map else [0.0]*len(common)
 
-    # baselines and window avgs
-    base_len = min(180, len(ad_vals))
-    if base_len < window + 5:
-        base_len = len(ad_vals)
-
+    # baselines (≈180d) vs window avgs
+    base_len = min(180, len(ad_vals)) or len(ad_vals)
     ad_base = sum(ad_vals[-base_len:]) / base_len
-    fe_base = sum(fe_vals[-base_len:]) / base_len
-    ad_avgW = sum(ad_vals[-window:]) / window
-    fe_avgW = sum(fe_vals[-window:]) / window
+    fe_base = sum(fe_btc[-base_len:]) / base_len
+    tx_base = (sum(tx_vals[-base_len:]) / base_len) if txs else 0.0
 
-    # deviations vs baseline (percent)
+    ad_avgW = sum(ad_vals[-window:]) / window
+    fe_avgW = sum(fe_btc[-window:]) / window
+    tx_avgW = (sum(tx_vals[-window:]) / window) if txs else 0.0
+
+    # hash momentum: (SMA_window - SMA_90)/SMA_90
+    hr_mom = 0.0
+    if any(hr_vals):
+        look = min(90, len(hr_vals))
+        sma_long = sum(hr_vals[-look:]) / look if look else 0.0
+        sma_short = sum(hr_vals[-window:]) / window
+        if sma_long:
+            hr_mom = (sma_short - sma_long) / sma_long
+
+    # deviations vs baseline
     dev_ad = 0.0 if ad_base == 0 else (ad_avgW - ad_base) / ad_base
     dev_fe = 0.0 if fe_base == 0 else (fe_avgW - fe_base) / fe_base
+    dev_tx = 0.0 if tx_base == 0 else (tx_avgW - tx_base) / tx_base
 
-    # blend: activity (0.6) + fees (0.4) → higher → lower risk
-    dev = 0.6*dev_ad + 0.4*dev_fe
-    score = clamp(sigmoid(-dev / 0.5), 0.0, 1.0)   # +50% dev → strong bullish (score down)
+    # blend: addr 40% + tx 20% + fees 20% + hash 20%  (higher → lower risk)
+    dev = 0.4*dev_ad + 0.2*dev_tx + 0.2*dev_fe + 0.2*hr_mom
+    score = clamp(sigmoid(-dev / 0.5), 0.0, 1.0)
     contrib = round((score - 0.5) * 0.2, 2)
 
-    # trailing: fees converted to USD-ish for sparkline (visual only)
+    # trailing sparkline: fees converted to USD-ish (visual only)
     bp = btc_price_usd or 0.0
     trail = []
-    lastW_dates = common_dates[-window:]
-    for d in reversed(lastW_dates):  # most recent first (UI expects that)
+    lastW_dates = common[-window:]
+    for d in reversed(lastW_dates):  # most recent first
         fee_btc = fe_map.get(d, 0.0)
         usd = round(fee_btc * bp, 2) if bp else round(fee_btc, 6)
         trail.append({"date": d.strftime("%d %b %Y"), "usd": usd})
 
+    # mempool
+    mem_mb, fee30 = fetch_mempool_summary()
+
     return {
         "score": round(score, 2),
         "contribution": contrib,
+        "addr_today": round(ad_vals[-1], 0),
+        "addr_avg_w": round(ad_avgW, 0),
+        "tx_today": round(tx_vals[-1], 0) if txs else None,
+        "tx_avg_w": round(tx_avgW, 0) if txs else None,
+        "fee_usd_today": round((fe_btc[-1] * (btc_price_usd or 0.0)), 2) if btc_price_usd else round(fe_btc[-1], 6),
+        "fee_usd_avg_w": round((fe_avgW * (btc_price_usd or 0.0)), 2) if btc_price_usd else round(fe_avgW, 6),
+        "hash_mom_pct": round(hr_mom*100.0, 2) if any(hr_vals) else None,
+        "mempool_vsize_mb": round(mem_mb, 2) if mem_mb is not None else None,
+        "mempool_halfhour_satvb": round(fee30, 0) if fee30 is not None else None,
         "trailing": trail,
-        "source": "blockchain.com charts (active addresses + tx fees)"
+        "source": "blockchain.com (addr/tx/fees/hash) + mempool.space"
     }
 
 # ===== compute drivers =====
@@ -471,7 +513,7 @@ sc_contrib = round((sc_score - 0.5) * 0.2, 2)
 netliq = compute_net_liquidity(window=SMOOTH_DAYS)
 term   = compute_term_structure_driver()
 
-# BTC price needed before on-chain trailing USD conversion
+# BTC price before on-chain USD conversions
 prev_doc = {}
 if latest_path.exists():
     try: prev_doc = json.loads(latest_path.read_text())
@@ -556,8 +598,8 @@ latest_path.write_text(json.dumps(doc, indent=2))
 (HIST / f"{as_of}.json").write_text(json.dumps(doc, indent=2))
 
 print(
-    f"[run_daily] OK inst={inst:.3f} risk={risk:.3f} band={band} "
-    f"w=({WEIGHTS}) smooth_days={SMOOTH_DAYS} ema_keep={EMA_KEEP} "
+    f"[run_daily] OK risk={risk:.3f} inst={inst:.3f} band={band} "
+    f"smooth_days={SMOOTH_DAYS} ema_keep={EMA_KEEP} "
     f"term_fund_ann={drivers['term_structure'].get('funding_ann_pct')} "
     f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')} "
     f"asof_utc={as_of_utc}"
