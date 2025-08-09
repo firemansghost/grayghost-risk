@@ -1,0 +1,16 @@
+[
+  {
+    "date": "2025-08-08",
+    "as_of_utc": "2025-08-08T23:59:52Z",
+    "risk": 0.45,
+    "band": "yellow",
+    "btc_price_usd": 116684.57
+  },
+  {
+    "date": "2025-08-09",
+    "as_of_utc": "2025-08-09T14:17:41Z",
+    "risk": 0.45,
+    "band": "yellow",
+    "btc_price_usd": 116965.01
+  }
+]
