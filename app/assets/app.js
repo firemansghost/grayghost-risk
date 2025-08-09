@@ -85,7 +85,7 @@ async function main() {
     // ===== sparkline helpers =====
     const isNum = (v) => Number.isFinite(Number(v));
     function makeSparkline(trailing) {
-      const series = (trailing || []).slice().reverse(); // oldest -> newest for drawing & tooltip
+      const series = (trailing || []).slice().reverse(); // oldest -> newest
       const vals = series.map(d => d && isNum(d.usd) ? Number(d.usd) : null).filter(v => v !== null);
       if (vals.length < 2) return '';
 
@@ -252,6 +252,10 @@ async function main() {
         contribs.appendChild(div);
       }
     }
+
+    // ===== Risk history chart + CSV =====
+    await renderRiskHistory();
+
   } catch (e) {
     console.error(e);
     const riskEl = document.getElementById('riskScore');
@@ -259,3 +263,65 @@ async function main() {
   }
 }
 main();
+
+// === history chart ===
+async function renderRiskHistory() {
+  try {
+    const HIST_URL = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.json?ts=' + Date.now();
+    const CSV_URL  = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.csv';
+
+    const res = await fetch(HIST_URL, { cache: 'no-store' });
+    if (!res.ok) return;
+    const hist = await res.json();
+    if (!Array.isArray(hist) || hist.length < 2) return;
+
+    // container
+    let host = document.getElementById('riskHistory');
+    if (host) host.remove();
+    host = document.createElement('div');
+    host.id = 'riskHistory';
+    host.className = 'history';
+
+    host.innerHTML = `
+      <h3>
+        Risk History <span class="muted">(bands: green &lt; 0.25, yellow 0.25–0.60, red &gt; 0.60)</span>
+        <a class="dl" href="${CSV_URL}" target="_blank" rel="noopener">Download CSV</a>
+      </h3>
+      <div class="chart"></div>
+    `;
+
+    const after = document.getElementById('contribs') || document.getElementById('gauges') || document.body.firstElementChild;
+    (after.parentNode || document.body).insertBefore(host, after.nextSibling);
+
+    // build SVG
+    const w = 800, h = 160, pad = 8;
+    const x = (i) => pad + i * (w - 2*pad) / (hist.length - 1);
+    const y = (risk) => pad + (1 - Math.max(0, Math.min(1, Number(risk)))) * (h - 2*pad);
+
+    let d = `M ${x(0)} ${y(hist[0].risk)}`;
+    for (let i = 1; i < hist.length; i++) d += ` L ${x(i)} ${y(hist[i].risk)}`;
+
+    // band rectangles
+    const yRedTop = y(1.0),  yRedBot = y(0.60);
+    const yYlwTop = y(0.60), yYlwBot = y(0.25);
+    const yGrnTop = y(0.25), yGrnBot = y(0.0);
+
+    const last = hist[hist.length - 1];
+    const lastX = x(hist.length - 1), lastY = y(last.risk);
+
+    const svg = `
+      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Risk history">
+        <rect x="0" y="${yRedTop}"  width="${w}" height="${Math.max(0, yRedBot - yRedTop)}"  class="band-red"></rect>
+        <rect x="0" y="${yYlwTop}" width="${w}" height="${Math.max(0, yYlwBot - yYlwTop)}" class="band-yellow"></rect>
+        <rect x="0" y="${yGrnTop}" width="${w}" height="${Math.max(0, yGrnBot - yGrnTop)}" class="band-green"></rect>
+
+        <path d="${d}" class="risk-line"></path>
+        <circle cx="${lastX}" cy="${lastY}" r="2.5" class="last-dot"></circle>
+      </svg>
+    `;
+
+    host.querySelector('.chart').innerHTML = svg;
+  } catch (e) {
+    console.error('[history]', e);
+  }
+}
