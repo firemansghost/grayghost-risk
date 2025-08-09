@@ -136,7 +136,6 @@ async function main() {
           const pt = series[idx];
           if (!pt) return;
 
-          // compact value formatting for tip (reuse USD formatter but drop sign)
           const v = Number(pt.usd);
           const absFmt = humanUSD(Math.abs(v)).replace('$','');
           tip.textContent = `${pt.date}: ${v >= 0 ? '+' : '−'}${absFmt}`;
@@ -200,6 +199,22 @@ async function main() {
           extra = `
             <div class="title">Funding (ann.): <span class="${fCls}">${fmtPct(fAnn)}</span></div>
             <div class="title">Perp Premium (7d): <span class="${pCls}">${fmtPctOrBp(prem)}</span></div>
+          `;
+        } else if (k === 'onchain') {
+          const aT = g.addr_today, aA = g.addr_avg_w;
+          const fT = g.fee_usd_today, fA = g.fee_usd_avg_w;
+          const mMB = g.mempool_vsize_mb, mFee = g.mempool_halfhour_satvb;
+
+          const fTfmt = fmtSignedUSD(fT), fAfmt = fmtSignedUSD(fA);
+          const actToday = Number.isFinite(aT) ? aT.toLocaleString() : '—';
+          const actAvg   = Number.isFinite(aA) ? aA.toLocaleString() : '—';
+          const mText = (Number.isFinite(mMB) ? `${mMB.toFixed(1)} MB` : '—')
+                      + ', 30m ~ ' + (Number.isFinite(mFee) ? `${mFee.toFixed(0)} sat/vB` : '—');
+
+          extra = `
+            <div class="title">Activity (addr): ${actToday} · ${avgLabel}: ${actAvg}</div>
+            <div class="title">Fees: <span class="${fTfmt.cls}">${fTfmt.text}</span> · ${avgLabel}: <span class="${fAfmt.cls}">${fAfmt.text}</span></div>
+            <div class="title">Mempool: ${mText}</div>
           `;
         }
 
