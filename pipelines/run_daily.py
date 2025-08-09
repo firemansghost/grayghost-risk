@@ -594,9 +594,43 @@ doc = {
     "drivers": drivers
 }
 
+# write latest + dated snapshot
 latest_path.write_text(json.dumps(doc, indent=2))
 (HIST / f"{as_of}.json").write_text(json.dumps(doc, indent=2))
 
+# ----- build risk history files (last ~2 years) -----
+def build_history(max_days=730):
+    rows = []
+    for p in sorted(HIST.glob("*.json")):
+        try:
+            j = json.loads(p.read_text())
+            rows.append({
+                "date": j.get("as_of") or p.stem,
+                "as_of_utc": j.get("as_of_utc"),
+                "risk": float(j.get("risk", "nan")),
+                "band": j.get("band"),
+                "btc_price_usd": j.get("btc_price_usd")
+            })
+        except Exception:
+            continue
+    # keep only valid + most recent
+    rows = [r for r in rows if isinstance(r.get("risk"), float) and math.isfinite(r["risk"])]
+    rows = rows[-max_days:]
+
+    # JSON
+    (DATA / "risk_history.json").write_text(json.dumps(rows, indent=2))
+
+    # CSV
+    lines = ["date,as_of_utc,risk,band,btc_price_usd"]
+    for r in rows:
+        bp = "" if r.get("btc_price_usd") is None else str(r["btc_price_usd"])
+        lines.append(f'{r["date"]},{r.get("as_of_utc","")},{r["risk"]:.4f},{r.get("band","")},{bp}')
+    (DATA / "risk_history.csv").write_text("\n".join(lines))
+
+build_history()
+print(f"[run_daily] history rows={sum(1 for _ in HIST.glob('*.json'))} -> risk_history.json/csv written")
+
+# final log line
 print(
     f"[run_daily] OK risk={risk:.3f} inst={inst:.3f} band={band} "
     f"smooth_days={SMOOTH_DAYS} ema_keep={EMA_KEEP} "
@@ -604,3 +638,4 @@ print(
     f"term_prem_7d={drivers['term_structure'].get('perp_premium_7d_pct')} "
     f"asof_utc={as_of_utc}"
 )
+
