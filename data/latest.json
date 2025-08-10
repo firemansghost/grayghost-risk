@@ -1,15 +1,15 @@
 {
   "as_of": "2025-08-10",
-  "as_of_utc": "2025-08-10T12:50:54Z",
+  "as_of_utc": "2025-08-10T13:23:46Z",
   "smooth_days": 21,
   "risk": 0.45,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 118709.9,
+  "btc_price_usd": 118517.12,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 106228571.43,
-  "stablecoin_delta_usd": -57632835.68,
-  "stablecoin_delta_sma7_usd": 171755884.91,
+  "stablecoin_delta_usd": -46205813.76,
+  "stablecoin_delta_sma7_usd": 172300028.81,
   "drivers": {
     "etf_flows": {
       "score": 0.37,
@@ -202,12 +202,12 @@
     "stablecoins": {
       "score": 0.46,
       "contribution": -0.01,
-      "raw_delta_usd": -57632835.68,
-      "sma7_delta_usd": 171755884.91,
+      "raw_delta_usd": -46205813.76,
+      "sma7_delta_usd": 172300028.81,
       "trailing": [
         {
           "date": "10 Aug 2025",
-          "usd": -57632835.68
+          "usd": -46205813.76
         },
         {
           "date": "10 Aug 2025",
@@ -293,12 +293,12 @@
       "source": "CoinGecko USDT + USDC market_caps (daily)"
     },
     "term_structure": {
-      "score": 0.51,
+      "score": 0.5,
       "contribution": 0.0,
       "funding_ann_pct": 8.06,
       "funding_8h_pct": 0.0074,
-      "perp_premium_now_pct": 0.052,
-      "perp_premium_7d_pct": 0.052,
+      "perp_premium_now_pct": 0.045,
+      "perp_premium_7d_pct": 0.045,
       "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy"
     },
     "onchain": {
@@ -308,95 +308,95 @@
       "addr_avg_w": 557662.0,
       "tx_today": 376121.0,
       "tx_avg_w": 428292.0,
-      "fee_usd_today": 533556.39,
-      "fee_usd_avg_w": 551754.63,
+      "fee_usd_today": 532689.91,
+      "fee_usd_avg_w": 550858.61,
       "hash_mom_pct": 3.1,
-      "mempool_vsize_mb": 20.54,
-      "mempool_halfhour_satvb": 2.0,
+      "mempool_vsize_mb": 19.49,
+      "mempool_halfhour_satvb": 1.0,
       "trailing": [
         {
           "date": "09 Aug 2025",
-          "usd": 533556.39
+          "usd": 532689.91
         },
         {
           "date": "08 Aug 2025",
-          "usd": 672036.46
+          "usd": 670945.1
         },
         {
           "date": "07 Aug 2025",
-          "usd": 617097.91
+          "usd": 616095.76
         },
         {
           "date": "06 Aug 2025",
-          "usd": 697910.23
+          "usd": 696776.86
         },
         {
           "date": "05 Aug 2025",
-          "usd": 436144.08
+          "usd": 435435.8
         },
         {
           "date": "04 Aug 2025",
-          "usd": 395641.26
+          "usd": 394998.75
         },
         {
           "date": "03 Aug 2025",
-          "usd": 349054.04
+          "usd": 348487.19
         },
         {
           "date": "02 Aug 2025",
-          "usd": 486998.73
+          "usd": 486207.87
         },
         {
           "date": "01 Aug 2025",
-          "usd": 647084.31
+          "usd": 646033.47
         },
         {
           "date": "31 Jul 2025",
-          "usd": 471274.61
+          "usd": 470509.28
         },
         {
           "date": "30 Jul 2025",
-          "usd": 497777.79
+          "usd": 496969.42
         },
         {
           "date": "29 Jul 2025",
-          "usd": 602160.12
+          "usd": 601182.24
         },
         {
           "date": "28 Jul 2025",
-          "usd": 499521.81
+          "usd": 498710.61
         },
         {
           "date": "27 Jul 2025",
-          "usd": 489049.92
+          "usd": 488255.72
         },
         {
           "date": "26 Jul 2025",
-          "usd": 501629.38
+          "usd": 500814.76
         },
         {
           "date": "25 Jul 2025",
-          "usd": 629745.02
+          "usd": 628722.34
         },
         {
           "date": "24 Jul 2025",
-          "usd": 1165869.95
+          "usd": 1163976.63
         },
         {
           "date": "23 Jul 2025",
-          "usd": 497703.97
+          "usd": 496895.72
         },
         {
           "date": "22 Jul 2025",
-          "usd": 515298.87
+          "usd": 514462.04
         },
         {
           "date": "21 Jul 2025",
-          "usd": 506206.05
+          "usd": 505383.99
         },
         {
           "date": "20 Jul 2025",
-          "usd": 375086.39
+          "usd": 374477.26
         }
       ],
       "source": "blockchain.com (addr/tx/fees/hash) + mempool.space"
