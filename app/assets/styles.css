@@ -80,3 +80,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
   transition: opacity .1s ease;
   white-space: nowrap;
 }
+
+/* --- Risk history panel --- */
+.history { margin-top: 16px; padding: 16px; border: 1px solid #ffffff20; border-radius: 8px; background: #0b1220; }
+.history h3 { margin: 0 0 8px 0; font-size: 14px; letter-spacing: .5px; color: var(--fg-muted); display: flex; justify-content: space-between; align-items: center; }
+.history h3 .muted { color: var(--fg-muted); font-weight: normal; margin-left: 8px; }
+.history a.dl { font-size: 12px; text-decoration: none; border: 1px solid #ffffff20; padding: 4px 8px; border-radius: 4px; color: var(--fg); }
+.history a.dl:hover { border-color: #ffffff40; }
+
+.history svg { width: 100%; height: 160px; display: block; }
+.band-green  { fill: var(--green);  opacity: .10; }
+.band-yellow { fill: var(--orange); opacity: .10; }
+.band-red    { fill: #ff4d4d;       opacity: .12; }
+.risk-line   { fill: none; stroke: var(--fg); stroke-width: 2; }
+.last-dot    { fill: var(--fg); opacity: .9; }
