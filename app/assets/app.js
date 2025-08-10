@@ -83,7 +83,7 @@ async function main() {
     // ===== sparkline helpers =====
     const isNum = (v) => Number.isFinite(Number(v));
     function makeSparkline(trailing) {
-      const series = (trailing || []).slice().reverse(); // oldest -> newest for drawing & tooltip
+      const series = (trailing || []).slice().reverse(); // oldest -> newest
       const vals = series.map(d => d && isNum(d.usd) ? Number(d.usd) : null).filter(v => v !== null);
       if (vals.length < 2) return '';
 
@@ -199,7 +199,7 @@ async function main() {
             <div class="title">Perp Premium (7d): <span class="${pCls}">${fmtPctOrBp(prem)}</span></div>
           `;
         } else if (k === 'onchain') {
-          // if you later add extra labels for on-chain, put them here
+          // put future on-chain labels here
         }
 
         const spark = makeSparkline(g.trailing);
@@ -228,7 +228,6 @@ async function main() {
         `;
         gauges.appendChild(div);
       }
-      // after DOM nodes exist, hook tooltips
       attachSparklineTooltips();
     }
 
@@ -331,24 +330,6 @@ async function renderRiskHistory() {
   dot.setAttribute('class', 'last-dot');
   svg.appendChild(dot);
 
-  wrap.appendChild(svg);
-
-  // CSV button
-  const btn = document.getElementById('downloadCsv');
-  if (btn) {
-    btn.href = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.csv?ts=' + Date.now();
-  }
-}
-
-  let d = `M ${x(0)} ${y(ys[0])}`;
-  for (let i = 1; i < ys.length; i++) d += ` L ${x(i)} ${y(ys[i])}`;
-
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('preserveAspectRatio', 'none');
-  svg.innerHTML = `
-    <path d="${d}" fill="none" stroke="currentColor" stroke-width="2" opacity="0.9"></path>
-  `;
   wrap.appendChild(svg);
 
   // CSV button
