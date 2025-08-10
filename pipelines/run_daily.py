@@ -552,6 +552,73 @@ drivers = {
     "onchain": onchain
 }
 
+# ---- per-driver freshness/health ----
+def _parse_dmy(s):
+    try:
+        return datetime.datetime.strptime(s, "%d %b %Y").date()
+    except Exception:
+        return None
+
+def add_health(d, kind, asof_str=None, asof_utc=None):
+    """
+    kind: 'daily' (expect <=72h fresh) or 'intraday' (<=6h fresh)
+    adds: d['health'] = {status: ok|stale|down, age_hours: float}
+          and normalizes asof/asof_utc if missing.
+    """
+    if not isinstance(d, dict):
+        return
+
+    # choose a timestamp
+    dt_utc = None
+    if asof_utc:
+        try:
+            dt_utc = datetime.datetime.fromisoformat(asof_utc.replace("Z", "+00:00"))
+        except Exception:
+            dt_utc = None
+    elif asof_str:
+        dt = _parse_dmy(asof_str)
+        if dt:
+            dt_utc = datetime.datetime(dt.year, dt.month, dt.day, tzinfo=datetime.timezone.utc)
+
+    age_hours = None
+    if dt_utc:
+        age_hours = (datetime.datetime.now(datetime.timezone.utc) - dt_utc).total_seconds() / 3600.0
+
+    status = "down"
+    if age_hours is not None:
+        thr = 6 if kind == "intraday" else 72
+        status = "ok" if age_hours <= thr else "stale"
+
+    if asof_str and not d.get("asof"):
+        d["asof"] = asof_str
+    if dt_utc and not d.get("asof_utc"):
+        d["asof_utc"] = dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    d["health"] = {"status": status, "age_hours": None if age_hours is None else round(age_hours, 1)}
+
+# ETF (daily)
+add_health(drivers.get("etf_flows"), "daily", asof_str=drivers["etf_flows"].get("asof"))
+
+# Net liquidity (daily) — compute_net_liquidity() already returns asof/asof_utc
+if drivers.get("net_liquidity"):
+    add_health(
+        drivers["net_liquidity"], "daily",
+        asof_str=drivers["net_liquidity"].get("asof"),
+        asof_utc=drivers["net_liquidity"].get("asof_utc")
+    )
+
+# Stablecoins (daily) — use most recent trailing date if present
+_sc_asof = None
+try:
+    _sc_asof = drivers["stablecoins"]["trailing"][0]["date"]
+except Exception:
+    pass
+add_health(drivers.get("stablecoins"), "daily", asof_str=_sc_asof)
+
+# Term structure & On-chain (intraday)
+add_health(drivers.get("term_structure"), "intraday", asof_utc=as_of_utc)
+add_health(drivers.get("onchain"), "intraday", asof_utc=as_of_utc)
+
 # ----- risk: weighted blend + EMA smoothing -----
 prev_risk = None
 if latest_path.exists():
