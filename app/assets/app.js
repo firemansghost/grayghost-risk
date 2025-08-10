@@ -220,20 +220,30 @@ async function main() {
 
         const spark = makeSparkline(g.trailing);
 
-        const div = document.createElement('div');
-        div.className = 'gauge';
-        div.innerHTML = `
-          <div class="title">${map[k]}</div>
-          <div class="value">${(g.score * 100).toFixed(0)}<span style="font-size:12px;"> /100</span></div>
-          <div class="title">Contribution: ${(g.contribution >= 0 ? '+' : '') + (g.contribution * 100).toFixed(0)} bp</div>
-          ${extra}
-          ${spark}
-        `;
-        gauges.appendChild(div);
-      }
-      // after the DOM exists, hook up tooltips
-      attachSparklineTooltips();
-    }
+// source + timestamp + colored dot
+const src = g.source || '—';
+let asofTxt = '—';
+if (g.asof_utc) {
+  const d = new Date(g.asof_utc);
+  // short UTC date: 08 Aug 2025
+  asofTxt = d.toUTCString().split(' ').slice(1,4).join(' ');
+} else if (g.asof) {
+  asofTxt = g.asof;
+}
+const status = (g.health && g.health.status) || 'neu';
+const statusLine = `<div class="status"><span class="dot ${status}"></span>${src} • ${asofTxt}</div>`;
+
+const div = document.createElement('div');
+div.className = 'gauge';
+div.innerHTML = `
+  <div class="title">${map[k]}</div>
+  <div class="value">${(g.score * 100).toFixed(0)}<span style="font-size:12px;"> /100</span></div>
+  <div class="title">Contribution: ${(g.contribution >= 0 ? '+' : '') + (g.contribution * 100).toFixed(0)} bp</div>
+  ${extra}
+  ${spark}
+  ${statusLine}
+`;
+gauges.appendChild(div);
 
     // ===== "Why it moved" bars =====
     const contribs = document.getElementById('contribs');
