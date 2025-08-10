@@ -8,7 +8,7 @@ async function main() {
     if (!res.ok) throw new Error('Fetch failed: ' + res.status + ' ' + res.statusText);
     const data = await res.json();
 
-    const WINDOW_DAYS = data.smooth_days ?? 7;
+    const WINDOW_DAYS = Number(data.smooth_days ?? 7);
     const avgLabel = `Avg (${WINDOW_DAYS}d)`;
 
     // ===== Top card =====
@@ -23,7 +23,9 @@ async function main() {
     }
 
     const riskEl = document.getElementById('riskScore');
-    if (riskEl) riskEl.textContent = Number(data.risk ?? NaN).toFixed(2);
+    if (riskEl && Number.isFinite(Number(data.risk))) {
+      riskEl.textContent = Number(data.risk).toFixed(2);
+    }
 
     const bandEl = document.getElementById('riskBand');
     if (bandEl) {
@@ -36,7 +38,7 @@ async function main() {
     const priceEl = document.getElementById('btcPrice');
     if (priceEl) {
       const p = data.btc_price_usd;
-      priceEl.textContent = p ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
+      priceEl.textContent = Number.isFinite(Number(p)) ? `BTC $${Number(p).toLocaleString()}` : 'BTC $—';
     }
 
     // ===== helpers =====
@@ -49,14 +51,12 @@ async function main() {
       if (ax >= 1e6)  return `$${(x / 1e6).toFixed(2)}M`;
       return `$${x.toLocaleString()}`;
     };
-
     const fmtSignedUSD = (v) => {
       const x = Number(v);
       if (!isFinite(x) || Math.abs(x) < 1) return { text: '—', cls: 'neu' };
       const sign = x >= 0 ? '+' : '−';
       return { text: `${sign}${humanUSD(Math.abs(x))}`, cls: x >= 0 ? 'pos' : 'neg' };
     };
-
     const fmtLevelUSD = (v) => humanUSD(v);
     const fmtPct = (v) => (isFinite(Number(v)) ? `${Number(v).toFixed(2)}%` : '—');
     const fmtPctOrBp = (v) => {
@@ -65,8 +65,6 @@ async function main() {
       if (Math.abs(n) < 0.10) return `${(n * 100).toFixed(2)} bp`;
       return `${n.toFixed(2)}%`;
     };
-
-    // color classes for term-structure lines
     const clsFunding = (ann) => {
       const n = Number(ann);
       if (!isFinite(n)) return 'neu';
@@ -85,7 +83,7 @@ async function main() {
     // ===== sparkline helpers =====
     const isNum = (v) => Number.isFinite(Number(v));
     function makeSparkline(trailing) {
-      const series = (trailing || []).slice().reverse(); // oldest -> newest
+      const series = (trailing || []).slice().reverse(); // oldest -> newest for drawing & tooltip
       const vals = series.map(d => d && isNum(d.usd) ? Number(d.usd) : null).filter(v => v !== null);
       if (vals.length < 2) return '';
 
@@ -110,7 +108,7 @@ async function main() {
         <div class="sparkline" data-series="${seriesAttr}">
           <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
             ${bg}
-            <path class="spark ${cls}" d="${d}" />
+            <path class="spark ${cls}" d="${d}"></path>
             <rect x="0" y="0" width="${w}" height="${h}" fill="transparent"></rect>
           </svg>
         </div>
@@ -137,7 +135,7 @@ async function main() {
           if (!pt) return;
 
           const v = Number(pt.usd);
-          const absFmt = humanUSD(Math.abs(v)).replace('$','');
+          const absFmt = humanUSD(Math.abs(v)).replace('$', '');
           tip.textContent = `${pt.date}: ${v >= 0 ? '+' : '−'}${absFmt}`;
 
           tip.style.left = (e.pageX + 12) + 'px';
@@ -201,49 +199,38 @@ async function main() {
             <div class="title">Perp Premium (7d): <span class="${pCls}">${fmtPctOrBp(prem)}</span></div>
           `;
         } else if (k === 'onchain') {
-          const aT = g.addr_today, aA = g.addr_avg_w;
-          const fT = g.fee_usd_today, fA = g.fee_usd_avg_w;
-          const mMB = g.mempool_vsize_mb, mFee = g.mempool_halfhour_satvb;
-
-          const fTfmt = fmtSignedUSD(fT), fAfmt = fmtSignedUSD(fA);
-          const actToday = Number.isFinite(aT) ? aT.toLocaleString() : '—';
-          const actAvg   = Number.isFinite(aA) ? aA.toLocaleString() : '—';
-          const mText = (Number.isFinite(mMB) ? `${mMB.toFixed(1)} MB` : '—')
-                      + ', 30m ~ ' + (Number.isFinite(mFee) ? `${mFee.toFixed(0)} sat/vB` : '—');
-
-          extra = `
-            <div class="title">Activity (addr): ${actToday} · ${avgLabel}: ${actAvg}</div>
-            <div class="title">Fees: <span class="${fTfmt.cls}">${fTfmt.text}</span> · ${avgLabel}: <span class="${fAfmt.cls}">${fAfmt.text}</span></div>
-            <div class="title">Mempool: ${mText}</div>
-          `;
+          // if you later add extra labels for on-chain, put them here
         }
 
         const spark = makeSparkline(g.trailing);
 
-// source + timestamp + colored dot
-const src = g.source || '—';
-let asofTxt = '—';
-if (g.asof_utc) {
-  const d = new Date(g.asof_utc);
-  // short UTC date: 08 Aug 2025
-  asofTxt = d.toUTCString().split(' ').slice(1,4).join(' ');
-} else if (g.asof) {
-  asofTxt = g.asof;
-}
-const status = (g.health && g.health.status) || 'neu';
-const statusLine = `<div class="status"><span class="dot ${status}"></span>${src} • ${asofTxt}</div>`;
+        // source + timestamp + colored dot
+        const src = g.source || '—';
+        let asofTxt = '—';
+        if (g.asof_utc) {
+          const d = new Date(g.asof_utc);
+          asofTxt = d.toUTCString().split(' ').slice(1, 4).join(' ');
+        } else if (g.asof) {
+          asofTxt = g.asof;
+        }
+        const status = (g.health && g.health.status) || 'neu';
+        const statusLine = `<div class="status"><span class="dot ${status}"></span>${src} • ${asofTxt}</div>`;
 
-const div = document.createElement('div');
-div.className = 'gauge';
-div.innerHTML = `
-  <div class="title">${map[k]}</div>
-  <div class="value">${(g.score * 100).toFixed(0)}<span style="font-size:12px;"> /100</span></div>
-  <div class="title">Contribution: ${(g.contribution >= 0 ? '+' : '') + (g.contribution * 100).toFixed(0)} bp</div>
-  ${extra}
-  ${spark}
-  ${statusLine}
-`;
-gauges.appendChild(div);
+        const div = document.createElement('div');
+        div.className = 'gauge';
+        div.innerHTML = `
+          <div class="title">${map[k]}</div>
+          <div class="value">${(Number(g.score) * 100).toFixed(0)}<span style="font-size:12px;"> /100</span></div>
+          <div class="title">Contribution: ${(Number(g.contribution) >= 0 ? '+' : '') + (Number(g.contribution) * 100).toFixed(0)} bp</div>
+          ${extra}
+          ${spark}
+          ${statusLine}
+        `;
+        gauges.appendChild(div);
+      }
+      // after DOM nodes exist, hook tooltips
+      attachSparklineTooltips();
+    }
 
     // ===== "Why it moved" bars =====
     const contribs = document.getElementById('contribs');
@@ -253,8 +240,8 @@ gauges.appendChild(div);
         if (!g) continue;
         const div = document.createElement('div');
         div.className = 'contrib';
-        const width = Math.min(100, Math.abs(g.contribution * 1000)); // demo scale
-        const color = g.contribution >= 0 ? 'var(--orange)' : 'var(--green)';
+        const width = Math.min(100, Math.abs(Number(g.contribution) * 1000)); // demo scale
+        const color = Number(g.contribution) >= 0 ? 'var(--orange)' : 'var(--green)';
         div.innerHTML = `
           <div class="title">${map[k]}</div>
           <div class="bar"><span style="width:${width}%; background:${color};"></span></div>
@@ -263,8 +250,8 @@ gauges.appendChild(div);
       }
     }
 
-    // ===== Risk history chart + CSV =====
-    await renderRiskHistory();
+    // ===== Risk history (safe) =====
+    renderRiskHistory().catch(() => { /* don’t block page if history fails */ });
 
   } catch (e) {
     console.error(e);
@@ -274,64 +261,52 @@ gauges.appendChild(div);
 }
 main();
 
-// === history chart ===
+// -------- history renderer (safe, independent) ----------
 async function renderRiskHistory() {
+  const wrap = document.getElementById('history');
+  if (!wrap) return;
+
+  let rows = [];
   try {
-    const HIST_URL = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.json?ts=' + Date.now();
-    const CSV_URL  = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.csv';
+    const url = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.json?ts=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('hist ' + r.status);
+    rows = await r.json();
+  } catch {
+    // no history yet → just leave the banded background
+    return;
+  }
+  if (!Array.isArray(rows) || rows.length < 2) return;
 
-    const res = await fetch(HIST_URL, { cache: 'no-store' });
-    if (!res.ok) return;
-    const hist = await res.json();
-    if (!Array.isArray(hist) || hist.length < 2) return;
+  // clear previous
+  wrap.innerHTML = '';
 
-    // container
-    let host = document.getElementById('riskHistory');
-    if (host) host.remove();
-    host = document.createElement('div');
-    host.id = 'riskHistory';
-    host.className = 'history';
+  const w = wrap.clientWidth || 900, h = 180, pad = 12;
+  const xs = rows.map(r => r.date);
+  const ys = rows.map(r => Number(r.risk)).filter(v => isFinite(v));
+  if (ys.length < 2) return;
 
-    host.innerHTML = `
-      <h3>
-        Risk History <span class="muted">(bands: green &lt; 0.25, yellow 0.25–0.60, red &gt; 0.60)</span>
-        <a class="dl" href="${CSV_URL}" target="_blank" rel="noopener">Download CSV</a>
-      </h3>
-      <div class="chart"></div>
-    `;
+  const min = Math.min(...ys), max = Math.max(...ys);
+  const x = (i) => pad + (i * (w - 2*pad) / (xs.length - 1));
+  const y = (v) => {
+    const t = (v - min) / (max - min || 1);
+    return (h - pad) - t * (h - 2*pad);
+  };
 
-    const after = document.getElementById('contribs') || document.getElementById('gauges') || document.body.firstElementChild;
-    (after.parentNode || document.body).insertBefore(host, after.nextSibling);
+  let d = `M ${x(0)} ${y(ys[0])}`;
+  for (let i = 1; i < ys.length; i++) d += ` L ${x(i)} ${y(ys[i])}`;
 
-    // build SVG
-    const w = 800, h = 160, pad = 8;
-    const x = (i) => pad + i * (w - 2*pad) / (hist.length - 1);
-    const y = (risk) => pad + (1 - Math.max(0, Math.min(1, Number(risk)))) * (h - 2*pad);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.innerHTML = `
+    <path d="${d}" fill="none" stroke="currentColor" stroke-width="2" opacity="0.9"></path>
+  `;
+  wrap.appendChild(svg);
 
-    let d = `M ${x(0)} ${y(hist[0].risk)}`;
-    for (let i = 1; i < hist.length; i++) d += ` L ${x(i)} ${y(hist[i].risk)}`;
-
-    // band rectangles
-    const yRedTop = y(1.0),  yRedBot = y(0.60);
-    const yYlwTop = y(0.60), yYlwBot = y(0.25);
-    const yGrnTop = y(0.25), yGrnBot = y(0.0);
-
-    const last = hist[hist.length - 1];
-    const lastX = x(hist.length - 1), lastY = y(last.risk);
-
-    const svg = `
-      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Risk history">
-        <rect x="0" y="${yRedTop}"  width="${w}" height="${Math.max(0, yRedBot - yRedTop)}"  class="band-red"></rect>
-        <rect x="0" y="${yYlwTop}" width="${w}" height="${Math.max(0, yYlwBot - yYlwTop)}" class="band-yellow"></rect>
-        <rect x="0" y="${yGrnTop}" width="${w}" height="${Math.max(0, yGrnBot - yGrnTop)}" class="band-green"></rect>
-
-        <path d="${d}" class="risk-line"></path>
-        <circle cx="${lastX}" cy="${lastY}" r="2.5" class="last-dot"></circle>
-      </svg>
-    `;
-
-    host.querySelector('.chart').innerHTML = svg;
-  } catch (e) {
-    console.error('[history]', e);
+  // CSV button
+  const btn = document.getElementById('downloadCsv');
+  if (btn) {
+    btn.href = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.csv?ts=' + Date.now();
   }
 }
