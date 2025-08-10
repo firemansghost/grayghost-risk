@@ -94,3 +94,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .band-red    { fill: #ff4d4d;       opacity: .12; }
 .risk-line   { fill: none; stroke: var(--fg); stroke-width: 2; }
 .last-dot    { fill: var(--fg); opacity: .9; }
+
+/* status line under each card */
+.status { margin-top: 6px; font-size: 11px; color: var(--fg-muted); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; opacity: .85; }
+.dot.ok    { background: var(--green); }
+.dot.stale { background: var(--orange); }
+.dot.down  { background: #ff4d4d; }
+.dot.neu   { background: #9aa4b1; opacity: .5; }
