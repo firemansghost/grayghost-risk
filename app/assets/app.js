@@ -261,7 +261,7 @@ async function main() {
 }
 main();
 
-// -------- history renderer (safe, independent) ----------
+// -------- history renderer (with banded background) ----------
 async function renderRiskHistory() {
   const wrap = document.getElementById('history');
   if (!wrap) return;
@@ -273,25 +273,72 @@ async function renderRiskHistory() {
     if (!r.ok) throw new Error('hist ' + r.status);
     rows = await r.json();
   } catch {
-    // no history yet → just leave the banded background
-    return;
+    return; // no history yet → leave empty
   }
   if (!Array.isArray(rows) || rows.length < 2) return;
 
-  // clear previous
   wrap.innerHTML = '';
 
-  const w = wrap.clientWidth || 900, h = 180, pad = 12;
-  const xs = rows.map(r => r.date);
-  const ys = rows.map(r => Number(r.risk)).filter(v => isFinite(v));
+  const w = wrap.clientWidth || 900;
+  const h = 180;
+  const pad = 12;
+
+  const ys = rows.map(r => Number(r.risk)).filter(v => Number.isFinite(v));
   if (ys.length < 2) return;
 
-  const min = Math.min(...ys), max = Math.max(...ys);
-  const x = (i) => pad + (i * (w - 2*pad) / (xs.length - 1));
-  const y = (v) => {
-    const t = (v - min) / (max - min || 1);
-    return (h - pad) - t * (h - 2*pad);
-  };
+  // Scale 0..1 so the band thresholds are fixed
+  const min = 0, max = 1;
+  const x = (i) => pad + (i * (w - 2 * pad) / (rows.length - 1));
+  const y = (v) => (h - pad) - ((v - min) / (max - min)) * (h - 2 * pad);
+
+  // Band thresholds (edit if you change bands)
+  const GREEN_MAX = 0.25;
+  const RED_MIN   = 0.60;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+
+  // --- Colored bands (append first so they’re behind the line)
+  const bands = [
+    { top: y(1.0),        bottom: y(RED_MIN),   cls: 'band-red'    }, // > 0.60
+    { top: y(RED_MIN),    bottom: y(GREEN_MAX), cls: 'band-yellow' }, // 0.25–0.60
+    { top: y(GREEN_MAX),  bottom: y(0.0),       cls: 'band-green'  }  // < 0.25
+  ];
+  bands.forEach(b => {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', 0);
+    rect.setAttribute('y', b.top);
+    rect.setAttribute('width', w);
+    rect.setAttribute('height', Math.max(0, b.bottom - b.top));
+    rect.setAttribute('class', b.cls);
+    svg.appendChild(rect);
+  });
+
+  // --- Risk line
+  let d = `M ${x(0)} ${y(ys[0])}`;
+  for (let i = 1; i < ys.length; i++) d += ` L ${x(i)} ${y(ys[i])}`;
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('class', 'risk-line');
+  svg.appendChild(path);
+
+  // --- Last dot
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('cx', x(ys.length - 1));
+  dot.setAttribute('cy', y(ys[ys.length - 1]));
+  dot.setAttribute('r', 3.5);
+  dot.setAttribute('class', 'last-dot');
+  svg.appendChild(dot);
+
+  wrap.appendChild(svg);
+
+  // CSV button
+  const btn = document.getElementById('downloadCsv');
+  if (btn) {
+    btn.href = 'https://raw.githubusercontent.com/firemansghost/grayghost-risk/main/data/risk_history.csv?ts=' + Date.now();
+  }
+}
 
   let d = `M ${x(0)} ${y(ys[0])}`;
   for (let i = 1; i < ys.length; i++) d += ` L ${x(i)} ${y(ys[i])}`;
