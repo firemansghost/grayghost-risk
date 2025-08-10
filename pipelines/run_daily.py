@@ -156,7 +156,7 @@ def scale_series(series_id, pairs):
         factor = 1.0
     return [(d, v*factor) for d, v in pairs]
 
-def compute_net_liquidity(window=7):
+def compute_net_liquidity():
     walcl_raw = fetch_fred_series("WALCL", days=180)
     tga_raw   = fetch_fred_series("WTREGEN", days=180)
     rrp_raw   = fetch_fred_series("RRPONTSYD", days=180)
@@ -185,25 +185,27 @@ def compute_net_liquidity(window=7):
 
     level = net[-1]
     delta1d = level - net[-2] if len(net) >= 2 else 0.0
-    deltaWd = level - net[-window] if len(net) > window else delta1d
-    smaW = deltaWd / float(window)
+    delta7d = level - net[-7] if len(net) >= 7 else delta1d
+    sma7 = delta7d / 7.0
 
     trailing = []
-    for i in range(1, min(window+1, len(net))):
+    for i in range(1, min(8, len(net))):
         d = dates[-i].strftime("%d %b %Y")
         trailing.append({"date": d, "usd": round(net[-i]-net[-i-1], 2)})
 
-    scale = 100_000_000_000.0
-    score = clamp(sigmoid(-smaW / scale), 0.0, 1.0)   # more liquidity → lower risk
+    score = clamp(sigmoid(-sma7 / 100_000_000_000.0), 0.0, 1.0)   # more liquidity → lower risk
     contrib = round((score - 0.5) * 0.2, 2)
 
+    asof_date = dates[-1]
     return {
         "score": round(score, 2),
         "contribution": contrib,
         "level_usd": round(level, 2),
         "delta1d_usd": round(delta1d, 2),
-        "sma7_delta_usd": round(smaW, 2),   # window avg
+        "sma7_delta_usd": round(sma7, 2),
         "trailing": trailing,
+        "asof": asof_date.strftime("%d %b %Y"),
+        "asof_utc": f"{asof_date.isoformat()}T00:00:00Z",
         "source": "FRED WALCL − WTREGEN − RRPONTSYD (USD)"
     }
 
