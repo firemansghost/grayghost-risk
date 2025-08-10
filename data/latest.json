@@ -1,15 +1,15 @@
 {
   "as_of": "2025-08-10",
-  "as_of_utc": "2025-08-10T16:47:22Z",
+  "as_of_utc": "2025-08-10T17:50:16Z",
   "smooth_days": 21,
   "risk": 0.45,
   "band": "yellow",
   "regime": "liquidity_on",
-  "btc_price_usd": 118759.71,
+  "btc_price_usd": 118555.37,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 106228571.43,
-  "stablecoin_delta_usd": -57250440.9,
-  "stablecoin_delta_sma7_usd": 171774094.19,
+  "stablecoin_delta_usd": -78472388.78,
+  "stablecoin_delta_sma7_usd": 170763525.24,
   "drivers": {
     "etf_flows": {
       "score": 0.37,
@@ -107,7 +107,7 @@
       "asof_utc": "2024-01-11T00:00:00Z",
       "health": {
         "status": "stale",
-        "age_hours": 13864.8
+        "age_hours": 13865.8
       }
     },
     "net_liquidity": {
@@ -151,18 +151,18 @@
       "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD (USD)",
       "health": {
         "status": "ok",
-        "age_hours": 16.8
+        "age_hours": 17.8
       }
     },
     "stablecoins": {
       "score": 0.46,
       "contribution": -0.01,
-      "raw_delta_usd": -57250440.9,
-      "sma7_delta_usd": 171774094.19,
+      "raw_delta_usd": -78472388.78,
+      "sma7_delta_usd": 170763525.24,
       "trailing": [
         {
           "date": "10 Aug 2025",
-          "usd": -57250440.9
+          "usd": -78472388.78
         },
         {
           "date": "10 Aug 2025",
@@ -250,18 +250,18 @@
       "asof_utc": "2025-08-10T00:00:00Z",
       "health": {
         "status": "ok",
-        "age_hours": 16.8
+        "age_hours": 17.8
       }
     },
     "term_structure": {
-      "score": 0.51,
-      "contribution": 0.0,
+      "score": 0.5,
+      "contribution": -0.0,
       "funding_ann_pct": 8.2,
       "funding_8h_pct": 0.0075,
-      "perp_premium_now_pct": 0.045,
-      "perp_premium_7d_pct": 0.045,
+      "perp_premium_now_pct": 0.03,
+      "perp_premium_7d_pct": 0.03,
       "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy",
-      "asof_utc": "2025-08-10T16:47:22Z",
+      "asof_utc": "2025-08-10T17:50:16Z",
       "health": {
         "status": "ok",
         "age_hours": 0.0
@@ -274,99 +274,99 @@
       "addr_avg_w": 557662.0,
       "tx_today": 376121.0,
       "tx_avg_w": 428292.0,
-      "fee_usd_today": 533780.27,
-      "fee_usd_avg_w": 551986.15,
+      "fee_usd_today": 532861.83,
+      "fee_usd_avg_w": 551036.39,
       "hash_mom_pct": 3.1,
-      "mempool_vsize_mb": 23.15,
-      "mempool_halfhour_satvb": 3.0,
+      "mempool_vsize_mb": 22.37,
+      "mempool_halfhour_satvb": 1.0,
       "trailing": [
         {
           "date": "09 Aug 2025",
-          "usd": 533780.27
+          "usd": 532861.83
         },
         {
           "date": "08 Aug 2025",
-          "usd": 672318.44
+          "usd": 671161.64
         },
         {
           "date": "07 Aug 2025",
-          "usd": 617356.84
+          "usd": 616294.6
         },
         {
           "date": "06 Aug 2025",
-          "usd": 698203.07
+          "usd": 697001.73
         },
         {
           "date": "05 Aug 2025",
-          "usd": 436327.08
+          "usd": 435576.33
         },
         {
           "date": "04 Aug 2025",
-          "usd": 395807.27
+          "usd": 395126.23
         },
         {
           "date": "03 Aug 2025",
-          "usd": 349200.5
+          "usd": 348599.66
         },
         {
           "date": "02 Aug 2025",
-          "usd": 487203.08
+          "usd": 486364.79
         },
         {
           "date": "01 Aug 2025",
-          "usd": 647355.82
+          "usd": 646241.97
         },
         {
           "date": "31 Jul 2025",
-          "usd": 471472.35
+          "usd": 470661.13
         },
         {
           "date": "30 Jul 2025",
-          "usd": 497986.65
+          "usd": 497129.81
         },
         {
           "date": "29 Jul 2025",
-          "usd": 602412.79
+          "usd": 601376.27
         },
         {
           "date": "28 Jul 2025",
-          "usd": 499731.41
+          "usd": 498871.56
         },
         {
           "date": "27 Jul 2025",
-          "usd": 489255.12
+          "usd": 488413.3
         },
         {
           "date": "26 Jul 2025",
-          "usd": 501839.86
+          "usd": 500976.39
         },
         {
           "date": "25 Jul 2025",
-          "usd": 630009.25
+          "usd": 628925.25
         },
         {
           "date": "24 Jul 2025",
-          "usd": 1166359.15
+          "usd": 1164352.29
         },
         {
           "date": "23 Jul 2025",
-          "usd": 497912.81
+          "usd": 497056.09
         },
         {
           "date": "22 Jul 2025",
-          "usd": 515515.08
+          "usd": 514628.08
         },
         {
           "date": "21 Jul 2025",
-          "usd": 506418.45
+          "usd": 505547.1
         },
         {
           "date": "20 Jul 2025",
-          "usd": 375243.77
+          "usd": 374598.12
         }
       ],
       "source": "blockchain.com (addr/tx/fees/hash) + mempool.space",
-      "asof_utc": "2025-08-10T16:47:22Z",
+      "asof_utc": "2025-08-10T17:50:16Z",
       "health": {
         "status": "ok",
         "age_hours": 0.0
