@@ -803,5 +803,12 @@
     "risk": 0.45,
     "band": "yellow",
     "btc_price_usd": 91434.1
+  },
+  {
+    "date": "2025-12-01",
+    "as_of_utc": "2025-12-01T12:55:18Z",
+    "risk": 0.45,
+    "band": "yellow",
+    "btc_price_usd": 85387.9
   }
 ]
