@@ -1643,5 +1643,12 @@
     "risk": 0.46,
     "band": "yellow",
     "btc_price_usd": 67740.37
+  },
+  {
+    "date": "2026-03-31",
+    "as_of_utc": "2026-03-31T13:46:59Z",
+    "risk": 0.46,
+    "band": "yellow",
+    "btc_price_usd": 67190.79
   }
 ]
