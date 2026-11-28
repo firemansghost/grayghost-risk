@@ -1,15 +1,15 @@
 {
-  "as_of": "2026-11-27",
-  "as_of_utc": "2026-11-27T12:16:06Z",
+  "as_of": "2026-11-28",
+  "as_of_utc": "2026-11-28T12:14:01Z",
   "smooth_days": 21,
   "risk": 0.47,
   "band": "yellow",
   "regime": "liquidity_off",
-  "btc_price_usd": 61586.64,
+  "btc_price_usd": 59240.47,
   "etf_flow_usd": 655300000.0,
   "etf_flow_sma7_usd": 106228571.43,
-  "stablecoin_delta_usd": -74996925.78,
-  "stablecoin_delta_sma7_usd": -237391416.08,
+  "stablecoin_delta_usd": -71862629.42,
+  "stablecoin_delta_sma7_usd": -204741284.46,
   "drivers": {
     "etf_flows": {
       "score": 0.37,
@@ -107,19 +107,23 @@
       "asof_utc": "2024-01-11T00:00:00Z",
       "health": {
         "status": "stale",
-        "age_hours": 25236.3
+        "age_hours": 25260.2
       }
     },
     "net_liquidity": {
       "score": 0.5,
       "contribution": -0.0,
-      "level_usd": 5824539000000.0,
+      "level_usd": 5829656000000.0,
       "delta1d_usd": 0.0,
-      "sma7_delta_usd": 1605666666.67,
+      "sma7_delta_usd": 1849333333.33,
       "trailing": [
         {
-          "date": "27 Nov 2026",
+          "date": "28 Nov 2026",
           "usd": 0.0
+        },
+        {
+          "date": "27 Nov 2026",
+          "usd": -50000000.0
         },
         {
           "date": "26 Nov 2026",
@@ -127,7 +131,7 @@
         },
         {
           "date": "25 Nov 2026",
-          "usd": 1000000.0
+          "usd": 5168000000.0
         },
         {
           "date": "24 Nov 2026",
@@ -140,29 +144,29 @@
         {
           "date": "22 Nov 2026",
           "usd": 0.0
-        },
-        {
-          "date": "21 Nov 2026",
-          "usd": 0.0
         }
       ],
-      "asof": "27 Nov 2026",
-      "asof_utc": "2026-11-27T00:00:00Z",
+      "asof": "28 Nov 2026",
+      "asof_utc": "2026-11-28T00:00:00Z",
       "source": "FRED WALCL \u2212 WTREGEN \u2212 RRPONTSYD (USD)",
       "health": {
         "status": "ok",
-        "age_hours": 12.3
+        "age_hours": 12.2
       }
     },
     "stablecoins": {
-      "score": 0.56,
+      "score": 0.55,
       "contribution": 0.01,
-      "raw_delta_usd": -74996925.78,
-      "sma7_delta_usd": -237391416.08,
+      "raw_delta_usd": -71862629.42,
+      "sma7_delta_usd": -204741284.46,
       "trailing": [
         {
-          "date": "27 Nov 2026",
-          "usd": -74996925.78
+          "date": "28 Nov 2026",
+          "usd": -71862629.42
+        },
+        {
+          "date": "28 Nov 2026",
+          "usd": 3748967.04
         },
         {
           "date": "27 Nov 2026",
@@ -239,29 +243,25 @@
         {
           "date": "09 Nov 2026",
           "usd": -81044538.64
-        },
-        {
-          "date": "08 Nov 2026",
-          "usd": -678769500.55
         }
       ],
       "source": "CoinGecko USDT + USDC market_caps (daily)",
-      "asof": "27 Nov 2026",
-      "asof_utc": "2026-11-27T00:00:00Z",
+      "asof": "28 Nov 2026",
+      "asof_utc": "2026-11-28T00:00:00Z",
       "health": {
         "status": "ok",
-        "age_hours": 12.3
+        "age_hours": 12.2
       }
     },
     "term_structure": {
       "score": 0.49,
       "contribution": -0.0,
-      "funding_ann_pct": 9.74,
-      "funding_8h_pct": 0.0089,
-      "perp_premium_now_pct": -0.015,
-      "perp_premium_7d_pct": -0.015,
+      "funding_ann_pct": 9.97,
+      "funding_8h_pct": 0.0091,
+      "perp_premium_now_pct": -0.014,
+      "perp_premium_7d_pct": -0.014,
       "source": "Binance/OKX/BitMEX/Bybit/Deribit/Proxy",
-      "asof_utc": "2026-11-27T12:16:06Z",
+      "asof_utc": "2026-11-28T12:14:01Z",
       "health": {
         "status": "ok",
         "age_hours": 0.0
@@ -274,99 +274,99 @@
       "addr_avg_w": 487095.0,
       "tx_today": 573988.0,
       "tx_avg_w": 585682.0,
-      "fee_usd_today": 198809.97,
-      "fee_usd_avg_w": 185344.39,
+      "fee_usd_today": 191236.22,
+      "fee_usd_avg_w": 178283.61,
       "hash_mom_pct": 0.09,
-      "mempool_vsize_mb": 29.77,
+      "mempool_vsize_mb": 28.95,
       "mempool_halfhour_satvb": 1.0,
       "trailing": [
         {
           "date": "26 Nov 2026",
-          "usd": 198809.97
+          "usd": 191236.22
         },
         {
           "date": "25 Nov 2026",
-          "usd": 171980.45
+          "usd": 165428.78
         },
         {
           "date": "24 Nov 2026",
-          "usd": 179535.59
+          "usd": 172696.1
         },
         {
           "date": "23 Nov 2026",
-          "usd": 173896.65
+          "usd": 167271.98
         },
         {
           "date": "22 Nov 2026",
-          "usd": 124734.02
+          "usd": 119982.22
         },
         {
           "date": "21 Nov 2026",
-          "usd": 199956.04
+          "usd": 192338.62
         },
         {
           "date": "20 Nov 2026",
-          "usd": 262478.47
+          "usd": 252479.23
         },
         {
           "date": "19 Nov 2026",
-          "usd": 199732.08
+          "usd": 192123.2
         },
         {
           "date": "18 Nov 2026",
-          "usd": 221547.95
+          "usd": 213107.98
         },
         {
           "date": "17 Nov 2026",
-          "usd": 182078.99
+          "usd": 175142.61
         },
         {
           "date": "16 Nov 2026",
-          "usd": 155250.27
+          "usd": 149335.94
         },
         {
           "date": "15 Nov 2026",
-          "usd": 132586.53
+          "usd": 127535.59
         },
         {
           "date": "14 Nov 2026",
-          "usd": 182400.35
+          "usd": 175451.73
         },
         {
           "date": "13 Nov 2026",
-          "usd": 229870.45
+          "usd": 221113.43
         },
         {
           "date": "12 Nov 2026",
-          "usd": 176352.79
+          "usd": 169634.56
         },
         {
           "date": "11 Nov 2026",
-          "usd": 194091.29
+          "usd": 186697.3
         },
         {
           "date": "10 Nov 2026",
-          "usd": 173124.57
+          "usd": 166529.31
         },
         {
           "date": "09 Nov 2026",
-          "usd": 169898.55
+          "usd": 163426.19
         },
         {
           "date": "08 Nov 2026",
-          "usd": 196338.74
+          "usd": 188859.13
         },
         {
           "date": "07 Nov 2026",
-          "usd": 165031.32
+          "usd": 158744.38
         },
         {
           "date": "06 Nov 2026",
-          "usd": 202537.11
+          "usd": 194821.37
         }
       ],
       "source": "blockchain.com (addr/tx/fees/hash) + mempool.space",
-      "asof_utc": "2026-11-27T12:16:06Z",
+      "asof_utc": "2026-11-28T12:14:01Z",
       "health": {
         "status": "ok",
         "age_hours": 0.0
